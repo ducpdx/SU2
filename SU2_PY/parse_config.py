@@ -18,31 +18,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # Lesser General Public License for more details.
 #
-<<<<<<< HEAD
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# TODO:
-# AddEnumOption     - parse (optional) AVAILABLE_VALUES tag
-# AddArrayOption    - parse default_vec_3d[] 
-#                     require assignment after description tag
-# AddListOption     - Read DEFAULT tag
-# AddConvectOption  - parse AVAILABLE_VALUES and DEFAULT
-# AddEnumListOption - How is this different from AddEnumOption?
-#                       Map name is located in a different spot 
-#                       DEFAULT tag required
-#                       Are all options always implemented?
-#                       This affects: GRID_MOVEMENT_KIND, DV_KIND
-# 
-# AddDVParamOption  - Parsing for description is broken
-# All: Optional LONG_DESCRIPTION tag
-
-# Candidates for changing type:
-# GRID_MOVEMENT_KIND, DV_KIND - Can these be made into AddEnumOption's? If yes for both we can eliminate AddEnumListOption
-# MOTION_ORIGIN_X and subsequent AddListOption's - Do these need to be lists?
-
-import os,sys
-=======
 # You should have received a copy of the GNU Lesser General Public
 # License along with SU2. If not, see <http://www.gnu.org/licenses/>.
 
@@ -50,7 +25,6 @@ import os,sys,xlwt
 
 # note: requires xlwt for spreadsheet output
 # http://pypi.python.org/pypi/xlwt
->>>>>>> master
 
 class config_option:
   name             = ""

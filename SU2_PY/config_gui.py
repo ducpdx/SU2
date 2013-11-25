@@ -28,7 +28,7 @@ import wx.lib.scrolledpanel as sp
 # ctrldict is a dictionary
 # keys of ctrldict are option categories
 # Values of ctrldict are lists (optlist) of lists (option_data)
-# option_data takes the form [option_name, option_value, StaticText,Control]
+# option_data takes the form [name, option_value, StaticText,Control]
 
 class YesNoBox(wx.CheckBox):
   '''The regular checkbox returns True or False, this one returns YES or NO to match the SU2 config format.'''
@@ -51,10 +51,10 @@ class YesNoBox(wx.CheckBox):
 class LabeledComboBox():
   '''Wrap a StaticText and TextCtrl into a single object'''
 
-  def __init__(self,parent,option_name,txtlabel,option_default,option_values,option_type,option_description):
-    self.label       = wx.StaticText(parent,label=txtlabel+", "+option_type)
-    self.option_name = option_name
-    self.control     = wx.ComboBox(parent,value=option_default,choices=option_values)
+  def __init__(self,parent,name,txtlabel,default,available_values,type,description):
+    self.label       = wx.StaticText(parent,label=txtlabel+", "+type)
+    self.name = name
+    self.control     = wx.ComboBox(parent,value=default,choices=available_values)
     self.control.SetSize((400,20))
     self.sizer       = wx.BoxSizer(wx.HORIZONTAL)
     self.sizer.Add(self.label,wx.EXPAND)
@@ -62,9 +62,9 @@ class LabeledComboBox():
     self.sizer.Add(self.control,wx.EXPAND)
     self.sizer.SetMinSize((400,20))
 
-    self.option_default     = option_default
-    self.option_type        = option_type
-    self.option_description = option_description
+    self.default     = default
+    self.type        = type
+    self.description = description
 
   def GetSizer(self):
     return self.sizer
@@ -76,7 +76,7 @@ class LabeledComboBox():
     self.control.SetValue(val)
 
   def SetDefaultValue(self):
-    self.control.SetValue(self.option_default)
+    self.control.SetValue(self.default)
 
   def GetCtrl(self):
     return self.control
@@ -84,10 +84,10 @@ class LabeledComboBox():
 class LabeledTextCtrl():
   '''Wrap a StaticText and TextCtrl into a single object'''
 
-  def __init__(self,parent,option_name,txtlabel,option_default,option_type):
-    self.label       = wx.StaticText(parent,label=txtlabel+", "+option_type)
-    self.option_name = option_name
-    self.control     = wx.TextCtrl(parent,value=option_default)
+  def __init__(self,parent,name,txtlabel,default,type):
+    self.label       = wx.StaticText(parent,label=txtlabel+", "+type)
+    self.name = name
+    self.control     = wx.TextCtrl(parent,value=default)
     self.control.SetSize((400,20))
     self.sizer       = wx.BoxSizer(wx.HORIZONTAL)
     self.sizer.Add(self.label,wx.EXPAND)
@@ -95,8 +95,8 @@ class LabeledTextCtrl():
     self.sizer.Add(self.control,wx.EXPAND)
     self.sizer.SetMinSize((400,20))
 
-    self.option_default = option_default
-    self.option_type    = option_type
+    self.default = default
+    self.type    = type
 
   def GetSizer(self):
     return self.sizer
@@ -108,7 +108,7 @@ class LabeledTextCtrl():
     self.control.SetValue(val)
 
   def SetDefaultValue(self):
-    self.control.SetValue(self.option_default)
+    self.control.SetValue(self.default)
 
   def GetCtrl(self):
     return self.control
@@ -154,10 +154,10 @@ class config_gui(wx.Frame):
       self.ctrldict[category] = []
       yctr = 0
       for j,opt in enumerate(option_data[category]):
-        if opt.option_type in ["EnumOption","MathProblem","SpecialOption","ConvectOption"]:
-          self.ctrldict[category].append(LabeledComboBox(self.right_panel,opt.option_name,opt.option_name,opt.option_default,opt.option_values,opt.option_type,opt.option_description))
+        if opt.type in ["EnumOption","MathProblem","SpecialOption","ConvectOption"]:
+          self.ctrldict[category].append(LabeledComboBox(self.right_panel,opt.name,opt.name,opt.default,opt.available_values,opt.type,opt.description))
         else:
-          self.ctrldict[category].append(LabeledTextCtrl(self.right_panel,opt.option_name,opt.option_name,opt.option_default,opt.option_type))
+          self.ctrldict[category].append(LabeledTextCtrl(self.right_panel,opt.name,opt.name,opt.default,opt.type))
 
       for control in self.ctrldict[category]:
         self.scroll_sizer.Add(control.GetSizer(),wx.EXPAND)     # Add each control to the sizer
@@ -227,7 +227,7 @@ class config_gui(wx.Frame):
       for option in optlist:
         value = option.GetValue()
         if not value=="":
-          f.write('%s=%s\n'%(option.option_name,option.GetValue()))
+          f.write('%s=%s\n'%(option.name,option.GetValue()))
     f.close()
 
   def OnOpen(self,event):
@@ -237,7 +237,7 @@ class config_gui(wx.Frame):
     OpenDialog.ShowModal()
     infile     = OpenDialog.GetPath()
 
-    # Open file, Load values into a dictionary
+    # Open file, Load available_values into a dictionary
     cfgfile    = open(infile,'r')
     infiledict = {}
     lines      = cfgfile.readlines()
@@ -249,11 +249,11 @@ class config_gui(wx.Frame):
         key = key.upper()    # AoA should work as well as AOA
         infiledict[key] = val
 
-    # Loop through controls and set them to the new values
+    # Loop through controls and set them to the new available_values
     for category,optlist in self.ctrldict.items():
       for option in optlist:
-        if option.option_name in infiledict:
-          option.SetValue(infiledict[option.option_name])
+        if option.name in infiledict:
+          option.SetValue(infiledict[option.name])
         else:
           option.SetValue("")
 
@@ -273,7 +273,7 @@ class config_gui(wx.Frame):
      
 def prepare_data():
   """ Method to get configuration data from source files. 
-      Outputs a dictionary of categories as keys and lists of config_options as values
+      Outputs a dictionary of categories as keys and lists of config_options as available_values
   """
 
   # These variables should point to the configuration files
@@ -293,9 +293,9 @@ def prepare_data():
   # Organize data into dictionary with categories as keys
   option_data = {}
   for opt in option_list:
-    if not opt.option_category in option_data:
-      option_data[opt.option_category] = []
-    option_data[opt.option_category].append(opt)
+    if not opt.category in option_data:
+      option_data[opt.category] = []
+    option_data[opt.category].append(opt)
 
   return option_data
 

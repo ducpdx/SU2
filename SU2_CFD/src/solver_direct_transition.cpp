@@ -768,8 +768,18 @@ void CTransLMSolver::ImplicitEuler_Iteration(CGeometry *geometry, CSolver **solv
 }
 
 void CTransLMSolver::Upwind_Residual(CGeometry *geometry, CSolver **solver_container, CNumerics *numerics, CConfig *config, unsigned short iMesh) {
+
   double *trans_var_i, *trans_var_j, *U_i, *U_j;
-  unsigned long iEdge, iPoint, jPoint;
+  double **Gradient_i, **Gradient_j, *Limiter_i = NULL, *Limiter_j = NULL, Project_Grad_i, Project_Grad_j;
+  unsigned long iEdge, iPoint, jPoint, iDim, iVar;
+	bool high_order_diss = (config->GetKind_Upwind_Turb() == SCALAR_UPWIND_2ND);
+	bool limiter = (config->GetKind_SlopeLimit() != NONE);
+
+
+	if (high_order_diss) {
+		if (config->GetKind_Gradient_Method() == GREEN_GAUSS) solver_container[FLOW_SOL]->SetSolution_Gradient_GG(geometry, config);
+		if (config->GetKind_Gradient_Method() == WEIGHTED_LEAST_SQUARES) solver_container[FLOW_SOL]->SetSolution_Gradient_LS(geometry, config);
+	}
 
   for (iEdge = 0; iEdge < geometry->GetnEdge(); iEdge++) {
 
@@ -787,6 +797,49 @@ void CTransLMSolver::Upwind_Residual(CGeometry *geometry, CSolver **solver_conta
     trans_var_i = node[iPoint]->GetSolution();
     trans_var_j = node[jPoint]->GetSolution();
     numerics->SetTransVar(trans_var_i,trans_var_j);
+
+		if (high_order_diss) {
+            
+			/*--- Conservative solution using gradient reconstruction ---*/
+			for (iDim = 0; iDim < nDim; iDim++) {
+				Vector_i[iDim] = 0.5*(geometry->node[jPoint]->GetCoord(iDim) - geometry->node[iPoint]->GetCoord(iDim));
+				Vector_j[iDim] = 0.5*(geometry->node[iPoint]->GetCoord(iDim) - geometry->node[jPoint]->GetCoord(iDim));
+			}
+			Gradient_i = solver_container[FLOW_SOL]->node[iPoint]->GetGradient();
+			Gradient_j = solver_container[FLOW_SOL]->node[jPoint]->GetGradient();
+            
+			for (iVar = 0; iVar < solver_container[FLOW_SOL]->GetnVar(); iVar++) {
+				Project_Grad_i = 0; Project_Grad_j = 0;
+				for (iDim = 0; iDim < nDim; iDim++) {
+					Project_Grad_i += Vector_i[iDim]*Gradient_i[iVar][iDim];
+					Project_Grad_j += Vector_j[iDim]*Gradient_j[iVar][iDim];
+				}
+				FlowSolution_i[iVar] = U_i[iVar] + Project_Grad_i;
+				FlowSolution_j[iVar] = U_j[iVar] + Project_Grad_j;
+			}
+			numerics->SetConservative(FlowSolution_i, FlowSolution_j);
+            
+			/*--- Transition variables using gradient reconstruction ---*/
+			Gradient_i = node[iPoint]->GetGradient(); Gradient_j = node[jPoint]->GetGradient();
+			if (limiter) { Limiter_i = node[iPoint]->GetLimiter(); Limiter_j = node[jPoint]->GetLimiter(); }
+            
+			for (iVar = 0; iVar < nVar; iVar++) {
+				Project_Grad_i = 0; Project_Grad_j = 0;
+				for (iDim = 0; iDim < nDim; iDim++) {
+					Project_Grad_i += Vector_i[iDim]*Gradient_i[iVar][iDim];
+					Project_Grad_j += Vector_j[iDim]*Gradient_j[iVar][iDim];
+				}
+				if (limiter) {
+					Solution_i[iVar] = trans_var_i[iVar] + Project_Grad_i*Limiter_i[iVar];
+					Solution_j[iVar] = trans_var_j[iVar] + Project_Grad_j*Limiter_j[iVar];
+				}
+				else {
+					Solution_i[iVar] = trans_var_i[iVar] + Project_Grad_i;
+					Solution_j[iVar] = trans_var_j[iVar] + Project_Grad_j;
+				}
+			}
+			numerics->SetTransVar(Solution_i, Solution_j);
+		}
 
     /*--- Add and subtract Residual ---*/
     numerics->ComputeResidual(Residual, Jacobian_i, Jacobian_j, config);
