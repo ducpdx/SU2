@@ -1,7 +1,7 @@
 ## \file config.py
 #  \brief python package for config 
 #  \author Trent Lukaczyk, Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 2.0.8
+#  \version 2.0.9
 #
 # Stanford University Unstructured (SU2) Code
 # Copyright (C) 2012 Aerospace Design Laboratory
@@ -267,11 +267,7 @@ def read_config(filename):
     """ reads a config file """
       
     # initialize output dictionary
-    data_dict = OrderedDict() 
-    
-    #hack - twl
-    data_dict['DV_VALUE_NEW'] = [0]
-    data_dict['DV_VALUE_OLD'] = [0]
+    data_dict = OrderedDict()
     
     input_file = open(filename)
     
@@ -353,6 +349,7 @@ def read_config(filename):
             if case("AVAILABLE_PROC")         : pass
             if case("EXT_ITER")               : pass
             if case("TIME_INSTANCES")         : pass
+            if case("UNST_ADJOINT_ITER")      : pass
             if case("ADAPT_CYCLES")           :
                 data_dict[this_param] = int(this_value)
                 break                
@@ -475,7 +472,13 @@ def read_config(filename):
     # some defaults
     if not data_dict.has_key('DECOMPOSED'):
         data_dict['DECOMPOSED'] = False
-            
+    
+    #hack - twl
+    if not data_dict.has_key('DV_VALUE_NEW'):
+      data_dict['DV_VALUE_NEW'] = [0]
+    if not data_dict.has_key('DV_VALUE_OLD'):
+      data_dict['DV_VALUE_OLD'] = [0]
+
     return data_dict
     
 #: def read_config()
@@ -585,6 +588,7 @@ def write_config(filename,param_dict):
             if case("ADAPT_CYCLES")           : pass
             if case("TIME_INSTANCES")         : pass
             if case("AVAILABLE_PROC")         : pass
+            if case("UNST_ADJOINT_ITER")      : pass
             if case("EXT_ITER")               :
                 output_file.write("%i" % new_value)
                 break

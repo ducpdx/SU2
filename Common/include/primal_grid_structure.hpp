@@ -3,7 +3,7 @@
  * \brief Headers of the main subroutines for storing the primal grid structure.
  *        The subroutines and functions are in the <i>primal_grid_structure.cpp</i> file.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -37,7 +37,7 @@ using namespace std;
  * \class CPrimalGrid
  * \brief Class to define the numerical primal grid.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CPrimalGrid {
 protected:
@@ -160,18 +160,6 @@ public:
 	 * \param[in] val_rotation_type - Kind of rotation/traslation that must be applied.
 	 */
 	virtual void SetRotation_Type(unsigned short val_rotation_type);
-	
-  /*!
-	 * \brief A pure virtual member.
-	 * \return Matching zone for a sliding interface vertex.
-	 */
-	virtual unsigned short GetMatching_Zone(void);
-	
-	/*!
-	 * \brief A pure virtual member.
-	 * \param[in] val_matching_zone - Matching zone index for a sliding interface vertex.
-	 */
-	virtual void SetMatching_Zone(unsigned short val_matching_zone);
   
 	/*!
 	 * \brief A pure virtual member.
@@ -241,7 +229,7 @@ public:
  * \brief Class for vertex element definition. This kind
  *        of element is used in the parallelization stuff.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CVertexMPI : public CPrimalGrid {
 private:
@@ -250,7 +238,6 @@ private:
 	static unsigned short VTK_Type;				/*!< \brief Type of element using VTK nomenclature. */
 	unsigned short Rotation_Type;			/*!< \brief Definition of the rotation, traslation of the
 																		 solution at the vertex. */
-  unsigned short Matching_Zone;			/*!< \brief Matching/Donor zone for sliding mesh interfaces. */
 	static unsigned short maxNodesFace;			/*!< \brief Maximum number of nodes for a face. */
 	static unsigned short nNeighbor_Elements;	/*!< \brief Number of Neighbor_Elements. */
 	
@@ -298,18 +285,6 @@ public:
 	 * \param[in] val_rotation_type - Kind of rotation/traslation that must be applied.
 	 */
 	void SetRotation_Type(unsigned short val_rotation_type);
-  
-  /*!
-	 * \brief Get the matching zone index for a sliding interface vertex.
-	 * \return Matching zone for a sliding interface vertex.
-	 */
-  unsigned short GetMatching_Zone(void);
-	
-	/*!
-	 * \brief Set the matching zone index for a sliding interface vertex.
-	 * \param[in] val_matching_zone - Matching zone index for a sliding interface vertex.
-	 */
-  void SetMatching_Zone(unsigned short val_matching_zone);
 	
 	/*!
 	 * \brief This function does nothing (it comes from a pure virtual function, that implies the
@@ -364,7 +339,7 @@ public:
  * \class CLine
  * \brief Class for line element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CLine : public CPrimalGrid {
 private:
@@ -483,7 +458,7 @@ public:
  * \class CTriangle
  * \brief Class for triangle element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CTriangle : public CPrimalGrid {
 private:
@@ -604,7 +579,7 @@ public:
  * \class CRectangle
  * \brief Class for rectangle element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CRectangle : public CPrimalGrid {
 private:
@@ -725,7 +700,7 @@ public:
  * \class CTetrahedron
  * \brief Class for tetrahedron element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CTetrahedron : public CPrimalGrid {
 private:
@@ -833,7 +808,7 @@ public:
  * \class CHexahedron
  * \brief Class for hexahedron element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CHexahedron : public CPrimalGrid {
 private:
@@ -948,7 +923,7 @@ public:
  * \class CWedge
  * \brief Class for wedge element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CWedge : public CPrimalGrid {
 private:
@@ -1059,7 +1034,7 @@ public:
  * \class CPyramid
  * \brief Class for pyramid element definition.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CPyramid : public CPrimalGrid {
 private:

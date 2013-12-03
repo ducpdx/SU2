@@ -2,7 +2,7 @@
  * \file solution_direct_turbulent.cpp
  * \brief Main subrotuines for solving direct problems (Euler, Navier-Stokes, etc.).
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -58,22 +58,18 @@ CTransLMSolver::CTransLMSolver(CGeometry *geometry, CConfig *config, unsigned sh
 		/*--- Define some auxillary vectors related to the residual ---*/
 		Residual     = new double[nVar]; Residual_RMS = new double[nVar];
 		Residual_i   = new double[nVar]; Residual_j   = new double[nVar];
-		Residual_Max = new double[nVar]; Point_Max    = new unsigned long[nVar];
-
+    Residual_Max = new double[nVar]; Point_Max    = new unsigned long[nVar];
 
 		/*--- Define some auxiliar vector related with the solution ---*/
 		Solution   = new double[nVar];
 		Solution_i = new double[nVar]; Solution_j = new double[nVar];
-
+		
 		/*--- Define some auxiliar vector related with the geometry ---*/
 		Vector_i = new double[nDim]; Vector_j = new double[nDim];
-
-		/*--- Define some auxiliar vector related with the flow solution ---*/
-		FlowSolution_i = new double [nDim+2]; FlowSolution_j = new double [nDim+2];
-
-		LinSysSol.Initialize(nPoint, nPointDomain, nVar, 0.0);
-		LinSysRes.Initialize(nPoint, nPointDomain, nVar, 0.0);
-
+				
+    LinSysSol.Initialize(nPoint, nPointDomain, nVar, 0.0);
+    LinSysRes.Initialize(nPoint, nPointDomain, nVar, 0.0);
+    
 		/*--- Jacobians and vector structures for implicit computations ---*/
 		if (config->GetKind_TimeIntScheme_Turb() == EULER_IMPLICIT) {
 
@@ -85,21 +81,20 @@ CTransLMSolver::CTransLMSolver(CGeometry *geometry, CConfig *config, unsigned sh
 				Jacobian_j[iVar] = new double [nVar];
 			}
 			/*--- Initialization of the structure of the whole Jacobian ---*/
-			Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
-
+			Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
+      
 		}
-
-		/*--- Computation of gradients by least squares ---*/
-		if (config->GetKind_Gradient_Method() == WEIGHTED_LEAST_SQUARES) {
-			/*--- S matrix := inv(R)*traspose(inv(R)) ---*/
-			Smatrix = new double* [nDim];
-			for (iDim = 0; iDim < nDim; iDim++)
-				Smatrix[iDim] = new double [nDim];
-			/*--- c vector := transpose(WA)*(Wb) ---*/
-			cvector = new double* [nVar];
-			for (iVar = 0; iVar < nVar; iVar++)
-				cvector[iVar] = new double [nDim];
-		}
+	
+	/*--- Computation of gradients by least squares ---*/
+	if (config->GetKind_Gradient_Method() == WEIGHTED_LEAST_SQUARES) {
+		/*--- S matrix := inv(R)*traspose(inv(R)) ---*/
+		Smatrix = new double* [nDim];
+		for (iDim = 0; iDim < nDim; iDim++)
+			Smatrix[iDim] = new double [nDim];
+		/*--- c vector := transpose(WA)*(Wb) ---*/
+		cvector = new double* [nVar];
+		for (iVar = 0; iVar < nVar; iVar++)
+			cvector[iVar] = new double [nDim];
 	}
 
 	/*--- Read farfield conditions from config ---*/
@@ -145,9 +140,7 @@ CTransLMSolver::CTransLMSolver(CGeometry *geometry, CConfig *config, unsigned sh
         /*--- Open the restart file, throw an error if this fails. ---*/
 		restart_file.open(filename.data(), ios::in);
 		if (restart_file.fail()) {
-			cout << "There is no transition restart file!!" << endl;
-			cout << "Press any key to exit..." << endl;
-			cin.get();
+			cout << "There is no turbulent restart file!!" << endl;
 			exit(1);
 		}
 
@@ -233,7 +226,6 @@ CTransLMSolver::~CTransLMSolver(void){
 	delete [] Solution;
 	delete [] Solution_i; delete [] Solution_j;
 	delete [] Vector_i; delete [] Vector_j;
-	delete [] FlowSolution_i; delete [] FlowSolution_j;
 	
 	for (iVar = 0; iVar < nVar; iVar++) {
 		delete [] Jacobian_i[iVar];

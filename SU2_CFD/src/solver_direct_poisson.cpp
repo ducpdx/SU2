@@ -2,7 +2,7 @@
  * \file solution_direct_poisson.cpp
  * \brief Main subrotuines for solving direct problems (Euler, Navier-Stokes, etc.).
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -71,7 +71,7 @@ CPoissonSolver::CPoissonSolver(CGeometry *geometry, CConfig *config) : CSolver()
   
 	/*--- Initialization of the structure of the whole Jacobian ---*/
   if (rank == MASTER_NODE) cout << "Initialize jacobian structure (Poisson equation)." << endl;
-	StiffMatrix.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
+	StiffMatrix.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
   
   /*--- Solution and residual vectors ---*/
   
@@ -324,8 +324,12 @@ void CPoissonSolver::Source_Template(CGeometry *geometry, CSolver **solver_conta
  * \brief Copy solution from solver 1 into solver 2
  * \author A. Lonkar
  */
-void CPoissonSolver::Copy_Zone_Solution(CSolver ***solver1_solution, CGeometry **solver1_geometry, CConfig *solver1_config,
-                                        CSolver ***solver2_solution, CGeometry **solver2_geometry, CConfig *solver2_config) {
+void CPoissonSolver::Copy_Zone_Solution(CSolver ***solver1_solution,
+                                        CGeometry **solver1_geometry,
+                                        CConfig *solver1_config,
+                                        CSolver ***solver2_solution,
+                                        CGeometry **solver2_geometry,
+                                        CConfig *solver2_config) {
 	unsigned long iPoint;
 	unsigned short iDim;
 	double neg_EFvalue;
@@ -336,7 +340,6 @@ void CPoissonSolver::Copy_Zone_Solution(CSolver ***solver1_solution, CGeometry *
 			neg_EFvalue = solver1_solution[MESH_0][POISSON_SOL]->node[iPoint]->GetGradient(0,iDim);
 			E_field[iDim] = -1.0*neg_EFvalue;
 		}
-		solver2_solution[MESH_0][PLASMA_SOL]->node[iPoint]->SetpoissonField(E_field);
 	}
 };
 

@@ -2,7 +2,7 @@
  * \file variable_direct_wave.cpp
  * \brief Definition of the solution fields.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -52,11 +52,6 @@ CWaveVariable::CWaveVariable(double *val_wave, unsigned short val_ndim, unsigned
 		Solution_Old[iVar] = val_wave[iVar];
 		Solution_Direct[iVar] = 0.0;
 	}
-  
-	/*--- Initialize sources to zero ---*/
-	Thickness_Noise  = 0.0;
-	Loading_Noise    = 0.0;
-	Quadrupole_Noise = 0.0;
   
 }
 

@@ -2,7 +2,7 @@
  * \file solver_structure.cpp
  * \brief Main subrotuines for solving direct, adjoint and linearized problems.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -26,6 +26,7 @@
 CSolver::CSolver(void) {
 
   /*--- Array initialization ---*/
+  OutputHeadingNames = NULL;
 	Residual_RMS = NULL;
   Residual_Max = NULL;
 	Residual = NULL;
@@ -59,6 +60,10 @@ CSolver::CSolver(void) {
 }
 
 CSolver::~CSolver(void) {
+  if( OutputHeadingNames != NULL){
+    delete []OutputHeadingNames;
+  }
+//  delete [] OutputHeadingNames;
 /*  unsigned short iVar, iDim;
   unsigned long iPoint;
   
@@ -334,10 +339,11 @@ void CSolver::SetAuxVar_Gradient_LS(CGeometry *geometry, CConfig *config) {
 	unsigned short iDim, jDim, iNeigh;
 	unsigned short nDim = geometry->GetnDim();
 	unsigned long iPoint, jPoint;
-	double *Coord_i, *Coord_j, AuxVar_i, AuxVar_j, weight;
-	double *cvector;
+	double *Coord_i, *Coord_j, AuxVar_i, AuxVar_j, weight, r11, r12, r13, r22, r23, r23_a,
+  r23_b, r33, z11, z12, z13, z22, z23, z33, detR2, product;
+  bool singular = false;
 
-	cvector = new double [nDim];
+	double *cvector = new double [nDim];
 
 	/*--- Loop over points of the grid ---*/
 	for (iPoint = 0; iPoint < geometry->GetnPoint(); iPoint++) {
@@ -348,8 +354,10 @@ void CSolver::SetAuxVar_Gradient_LS(CGeometry *geometry, CConfig *config) {
 		/*--- Inizialization of variables ---*/
 		for (iDim = 0; iDim < nDim; iDim++)
 			cvector[iDim] = 0.0;
-		double r11 = 0.0, r12 = 0.0, r13 = 0.0, r22 = 0.0, r23 = 0.0, r23_a = 0.0, r23_b = 0.0, r33 = 0.0;
 
+    r11 = 0.0; r12 = 0.0; r13 = 0.0; r22 = 0.0;
+    r23 = 0.0; r23_a = 0.0; r23_b = 0.0; r33 = 0.0;
+    
 		for (iNeigh = 0; iNeigh < geometry->node[iPoint]->GetnPoint(); iNeigh++) {
 			jPoint = geometry->node[iPoint]->GetPoint(iNeigh);
 			Coord_j = geometry->node[jPoint]->GetCoord();
@@ -360,71 +368,90 @@ void CSolver::SetAuxVar_Gradient_LS(CGeometry *geometry, CConfig *config) {
 				weight += (Coord_j[iDim]-Coord_i[iDim])*(Coord_j[iDim]-Coord_i[iDim]);
 
 			/*--- Sumations for entries of upper triangular matrix R ---*/
-			r11 += (Coord_j[0]-Coord_i[0])*(Coord_j[0]-Coord_i[0])/(weight);
-			r12 += (Coord_j[0]-Coord_i[0])*(Coord_j[1]-Coord_i[1])/(weight);
-			r22 += (Coord_j[1]-Coord_i[1])*(Coord_j[1]-Coord_i[1])/(weight);
-			if (nDim == 3) {
-				r13 += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/(weight);
-				r23_a += (Coord_j[1]-Coord_i[1])*(Coord_j[2]-Coord_i[2])/(weight);
-				r23_b += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/(weight);
-				r33 += (Coord_j[2]-Coord_i[2])*(Coord_j[2]-Coord_i[2])/(weight);
-			}
-
-			/*--- Entries of c:= transpose(A)*b ---*/
-			for (iDim = 0; iDim < nDim; iDim++)
-				cvector[iDim] += (Coord_j[iDim]-Coord_i[iDim])*(AuxVar_j-AuxVar_i)/(weight);
+      
+      if (fabs(weight) > EPS){
+        r11 += (Coord_j[0]-Coord_i[0])*(Coord_j[0]-Coord_i[0])/weight;
+        r12 += (Coord_j[0]-Coord_i[0])*(Coord_j[1]-Coord_i[1])/weight;
+        r22 += (Coord_j[1]-Coord_i[1])*(Coord_j[1]-Coord_i[1])/weight;
+        if (nDim == 3) {
+          r13 += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/weight;
+          r23_a += (Coord_j[1]-Coord_i[1])*(Coord_j[2]-Coord_i[2])/weight;
+          r23_b += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/weight;
+          r33 += (Coord_j[2]-Coord_i[2])*(Coord_j[2]-Coord_i[2])/weight;
+        }
+        
+        /*--- Entries of c:= transpose(A)*b ---*/
+        
+        for (iDim = 0; iDim < nDim; iDim++)
+          cvector[iDim] += (Coord_j[iDim]-Coord_i[iDim])*(AuxVar_j-AuxVar_i)/(weight);
+      }
+      
 		}
 
 		/*--- Entries of upper triangular matrix R ---*/
+    
+    if (fabs(r11) < EPS) r11 = EPS;
 		r11 = sqrt(r11);
-		r12 = r12/(r11);
+		r12 = r12/r11;
 		r22 = sqrt(r22-r12*r12);
+    if (fabs(r22) < EPS) r22 = EPS;
 		if (nDim == 3) {
-			r13 = r13/(r11);
+			r13 = r13/r11;
 			r23 = r23_a/(r22) - r23_b*r12/(r11*r22);
 			r33 = sqrt(r33-r23*r23-r13*r13);
 		}
 
+    /*--- Compute determinant ---*/
+    
+    if (nDim == 2) detR2 = (r11*r22)*(r11*r22);
+    else detR2 = (r11*r22*r33)*(r11*r22*r33);
+    
+    /*--- Detect singular matrices ---*/
+    
+    if (fabs(detR2) < EPS) singular = true;
+    
 		/*--- S matrix := inv(R)*traspose(inv(R)) ---*/
-		if (nDim == 2) {
-			double detR2 = (r11*r22)*(r11*r22);
-			Smatrix[0][0] = (r12*r12+r22*r22)/(detR2);
-			Smatrix[0][1] = -r11*r12/(detR2);
-			Smatrix[1][0] = Smatrix[0][1];
-			Smatrix[1][1] = r11*r11/(detR2);
-		}
-		else {
-			double detR2 = (r11*r22*r33)*(r11*r22*r33);
-			double z11, z12, z13, z22, z23, z33;
-			z11 = r22*r33;
-			z12 = -r12*r33;
-			z13 = r12*r23-r13*r22;
-			z22 = r11*r33;
-			z23 = -r11*r23;
-			z33 = r11*r22;
-			Smatrix[0][0] = (z11*z11+z12*z12+z13*z13)/(detR2);
-			Smatrix[0][1] = (z12*z22+z13*z23)/(detR2);
-			Smatrix[0][2] = (z13*z33)/(detR2);
-			Smatrix[1][0] = Smatrix[0][1];
-			Smatrix[1][1] = (z22*z22+z23*z23)/(detR2);
-			Smatrix[1][2] = (z23*z33)/(detR2);
-			Smatrix[2][0] = Smatrix[0][2];
-			Smatrix[2][1] = Smatrix[1][2];
-			Smatrix[2][2] = (z33*z33)/(detR2);
-		}
+    
+    if (singular) {
+      for (iDim = 0; iDim < nDim; iDim++)
+        for (jDim = 0; jDim < nDim; jDim++)
+          Smatrix[iDim][jDim] = 0.0;
+    }
+    else {
+      if (nDim == 2) {
+        Smatrix[0][0] = (r12*r12+r22*r22)/detR2;
+        Smatrix[0][1] = -r11*r12/detR2;
+        Smatrix[1][0] = Smatrix[0][1];
+        Smatrix[1][1] = r11*r11/detR2;
+      }
+      else {
+        z11 = r22*r33; z12 = -r12*r33; z13 = r12*r23-r13*r22;
+        z22 = r11*r33; z23 = -r11*r23; z33 = r11*r22;
+        Smatrix[0][0] = (z11*z11+z12*z12+z13*z13)/detR2;
+        Smatrix[0][1] = (z12*z22+z13*z23)/detR2;
+        Smatrix[0][2] = (z13*z33)/detR2;
+        Smatrix[1][0] = Smatrix[0][1];
+        Smatrix[1][1] = (z22*z22+z23*z23)/detR2;
+        Smatrix[1][2] = (z23*z33)/detR2;
+        Smatrix[2][0] = Smatrix[0][2];
+        Smatrix[2][1] = Smatrix[1][2];
+        Smatrix[2][2] = (z33*z33)/detR2;
+      }
+    }
 
 		/*--- Computation of the gradient: S*c ---*/
-		double product;
+    
 		for (iDim = 0; iDim < nDim; iDim++) {
 			product = 0.0;
 			for (jDim = 0; jDim < nDim; jDim++)
 				product += Smatrix[iDim][jDim]*cvector[jDim];
 			if (geometry->node[iPoint]->GetDomain())
-				node[iPoint]->SetAuxVarGradient(iDim,product);
+				node[iPoint]->SetAuxVarGradient(iDim, product);
 		}
 	}
 
 	delete [] cvector;
+  
 }
 
 void CSolver::SetSolution_Gradient_GG(CGeometry *geometry, CConfig *config) {
@@ -488,91 +515,124 @@ void CSolver::SetSolution_Gradient_GG(CGeometry *geometry, CConfig *config) {
 }
 
 void CSolver::SetSolution_Gradient_LS(CGeometry *geometry, CConfig *config) {
+  
 	unsigned short iDim, jDim, iVar, iNeigh;
 	unsigned long iPoint, jPoint;
 	double *Coord_i, *Coord_j, *Solution_i, *Solution_j,
 	r11, r12, r13, r22, r23, r23_a, r23_b, r33, weight, detR2, z11, z12, z13, 
 	z22, z23, z33, product;
-	double **cvector;
+  bool singular = false;
 
-	cvector = new double* [nVar];
+	double **cvector = new double* [nVar];
 	for (iVar = 0; iVar < nVar; iVar++)
 		cvector[iVar] = new double [nDim];
 
 	/*--- Loop over points of the grid ---*/
+  
 	for (iPoint = 0; iPoint < geometry->GetnPointDomain(); iPoint++) {
 
+    /*--- Get coordinates ---*/
+
 		Coord_i = geometry->node[iPoint]->GetCoord();
+    
+    /*--- Get consevative solution ---*/
+
 		Solution_i = node[iPoint]->GetSolution();
 
 		/*--- Inizialization of variables ---*/
+    
 		for (iVar = 0; iVar < nVar; iVar++)
 			for (iDim = 0; iDim < nDim; iDim++)
 				cvector[iVar][iDim] = 0.0;
-		r11 = 0.0; r12 = 0.0; r13 = 0.0; r22 = 0.0; r23 = 0.0; r23_a = 0.0; r23_b = 0.0; r33 = 0.0;
+    
+		r11 = 0.0; r12 = 0.0; r13 = 0.0; r22 = 0.0;
+    r23 = 0.0; r23_a = 0.0; r23_b = 0.0; r33 = 0.0;
 
 		for (iNeigh = 0; iNeigh < geometry->node[iPoint]->GetnPoint(); iNeigh++) {
 			jPoint = geometry->node[iPoint]->GetPoint(iNeigh);
 			Coord_j = geometry->node[jPoint]->GetCoord();
+      
 			Solution_j = node[jPoint]->GetSolution();
 
 			weight = 0.0;
 			for (iDim = 0; iDim < nDim; iDim++)
 				weight += (Coord_j[iDim]-Coord_i[iDim])*(Coord_j[iDim]-Coord_i[iDim]);
-
+      
 			/*--- Sumations for entries of upper triangular matrix R ---*/
-			r11 += (Coord_j[0]-Coord_i[0])*(Coord_j[0]-Coord_i[0])/(weight);
-			r12 += (Coord_j[0]-Coord_i[0])*(Coord_j[1]-Coord_i[1])/(weight);
-			r22 += (Coord_j[1]-Coord_i[1])*(Coord_j[1]-Coord_i[1])/(weight);
-			if (nDim == 3) {
-				r13 += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/(weight);
-				r23_a += (Coord_j[1]-Coord_i[1])*(Coord_j[2]-Coord_i[2])/(weight);
-				r23_b += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/(weight);
-				r33 += (Coord_j[2]-Coord_i[2])*(Coord_j[2]-Coord_i[2])/(weight);
-			}
-
-			/*--- Entries of c:= transpose(A)*b ---*/
-			for (iVar = 0; iVar < nVar; iVar++)
-				for (iDim = 0; iDim < nDim; iDim++)
-					cvector[iVar][iDim] += (Coord_j[iDim]-Coord_i[iDim])*(Solution_j[iVar]-Solution_i[iVar])/(weight);
+      
+      if (fabs(weight) > EPS){
+        r11 += (Coord_j[0]-Coord_i[0])*(Coord_j[0]-Coord_i[0])/weight;
+        r12 += (Coord_j[0]-Coord_i[0])*(Coord_j[1]-Coord_i[1])/weight;
+        r22 += (Coord_j[1]-Coord_i[1])*(Coord_j[1]-Coord_i[1])/weight;
+        if (nDim == 3) {
+          r13 += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/weight;
+          r23_a += (Coord_j[1]-Coord_i[1])*(Coord_j[2]-Coord_i[2])/weight;
+          r23_b += (Coord_j[0]-Coord_i[0])*(Coord_j[2]-Coord_i[2])/weight;
+          r33 += (Coord_j[2]-Coord_i[2])*(Coord_j[2]-Coord_i[2])/weight;
+        }
+        
+        /*--- Entries of c:= transpose(A)*b ---*/
+        
+        for (iVar = 0; iVar < nVar; iVar++)
+          for (iDim = 0; iDim < nDim; iDim++)
+            cvector[iVar][iDim] += (Coord_j[iDim]-Coord_i[iDim])*(Solution_j[iVar]-Solution_i[iVar])/weight;
+      }
+      
 		}
 
 		/*--- Entries of upper triangular matrix R ---*/
+    
+    if (fabs(r11) < EPS) r11 = EPS;
 		r11 = sqrt(r11);
 		r12 = r12/(r11);
 		r22 = sqrt(r22-r12*r12);
+    if (fabs(r22) < EPS) r22 = EPS;
 		if (nDim == 3) {
 			r13 = r13/(r11);
 			r23 = r23_a/(r22) - r23_b*r12/(r11*r22);
 			r33 = sqrt(r33-r23*r23-r13*r13);
 		}
+    
+    /*--- Compute determinant ---*/
+    
+    if (nDim == 2) detR2 = (r11*r22)*(r11*r22);
+    else detR2 = (r11*r22*r33)*(r11*r22*r33);
+    
+    /*--- Detect singular matrices ---*/
+    
+    if (fabs(detR2) < EPS) singular = true;
+    
 		/*--- S matrix := inv(R)*traspose(inv(R)) ---*/
-		if (nDim == 2) {
-			detR2 = (r11*r22)*(r11*r22);
-			Smatrix[0][0] = (r12*r12+r22*r22)/(detR2);
-			Smatrix[0][1] = -r11*r12/(detR2);
-			Smatrix[1][0] = Smatrix[0][1];
-			Smatrix[1][1] = r11*r11/(detR2);
-		}
-		else {
-			detR2 = (r11*r22*r33)*(r11*r22*r33);
-			z11 = r22*r33;
-			z12 = -r12*r33;
-			z13 = r12*r23-r13*r22;
-			z22 = r11*r33;
-			z23 = -r11*r23;
-			z33 = r11*r22;
-			Smatrix[0][0] = (z11*z11+z12*z12+z13*z13)/(detR2);
-			Smatrix[0][1] = (z12*z22+z13*z23)/(detR2);
-			Smatrix[0][2] = (z13*z33)/(detR2);
-			Smatrix[1][0] = Smatrix[0][1];
-			Smatrix[1][1] = (z22*z22+z23*z23)/(detR2);
-			Smatrix[1][2] = (z23*z33)/(detR2);
-			Smatrix[2][0] = Smatrix[0][2];
-			Smatrix[2][1] = Smatrix[1][2];
-			Smatrix[2][2] = (z33*z33)/(detR2);
-		}
+    
+    if (singular) {
+      for (iDim = 0; iDim < nDim; iDim++)
+        for (jDim = 0; jDim < nDim; jDim++)
+          Smatrix[iDim][jDim] = 0.0;
+    }
+    else {
+      if (nDim == 2) {
+        Smatrix[0][0] = (r12*r12+r22*r22)/detR2;
+        Smatrix[0][1] = -r11*r12/detR2;
+        Smatrix[1][0] = Smatrix[0][1];
+        Smatrix[1][1] = r11*r11/detR2;
+      }
+      else {
+        z11 = r22*r33; z12 = -r12*r33; z13 = r12*r23-r13*r22;
+        z22 = r11*r33; z23 = -r11*r23; z33 = r11*r22;
+        Smatrix[0][0] = (z11*z11+z12*z12+z13*z13)/detR2;
+        Smatrix[0][1] = (z12*z22+z13*z23)/detR2;
+        Smatrix[0][2] = (z13*z33)/detR2;
+        Smatrix[1][0] = Smatrix[0][1];
+        Smatrix[1][1] = (z22*z22+z23*z23)/detR2;
+        Smatrix[1][2] = (z23*z33)/detR2;
+        Smatrix[2][0] = Smatrix[0][2];
+        Smatrix[2][1] = Smatrix[1][2];
+        Smatrix[2][2] = (z33*z33)/detR2;
+      }
+    }
+    
 		/*--- Computation of the gradient: S*c ---*/
+    
 		for (iVar = 0; iVar < nVar; iVar++) {
 			for (iDim = 0; iDim < nDim; iDim++) {
 				product = 0.0;
@@ -581,14 +641,17 @@ void CSolver::SetSolution_Gradient_LS(CGeometry *geometry, CConfig *config) {
 				node[iPoint]->SetGradient(iVar,iDim,product);
 			}
 		}
+    
 	}
 
 	/*--- Deallocate memory ---*/
+  
 	for (iVar = 0; iVar < nVar; iVar++)
 		delete [] cvector[iVar];
 	delete [] cvector;
   
   /*--- Gradient MPI ---*/
+  
   Set_MPI_Solution_Gradient(geometry, config);
   
 }
@@ -1297,13 +1360,14 @@ void CSolver::Aeroelastic(CSurfaceMovement *surface_movement, CGeometry *geometr
                 Monitoring_Tag = config->GetMarker_Monitoring(iMarker_Monitoring);
                 Marker_Tag = config->GetMarker_All_Tag(iMarker);
                 if (Marker_Tag == Monitoring_Tag) {
+                    
                     Cl = GetSurface_CLift(iMarker_Monitoring);
                     Cm = -1.0*GetSurface_CMz(iMarker_Monitoring);
+
+                    /*--- Solve the aeroelastic equations for the particular marker(surface) ---*/
+                    SolveTypicalSectionWingModel(geometry, Cl, Cm, config, IntIter, iMarker_Monitoring, structural_solution);
                 }
             }
-            
-            /*--- Solve the aeroelastic equations for the particular marker(surface) ---*/
-            SolveTypicalSectionWingModel(geometry, Cl, Cm, config, IntIter, structural_solution);
             
             /*--- Compute the new surface node locations ---*/
             surface_movement->AeroelasticDeform(geometry, config, iMarker, structural_solution);
@@ -1379,7 +1443,7 @@ void CSolver::SetUpTypicalSectionWingModel(double (&PHI)[2][2],double (&lambda)[
     
 }
 
-void CSolver::SolveTypicalSectionWingModel(CGeometry *geometry, double Cl, double Cm, CConfig *config, unsigned long iter, double (&displacements)[4]) {
+void CSolver::SolveTypicalSectionWingModel(CGeometry *geometry, double Cl, double Cm, CConfig *config, unsigned long iter, unsigned short iMarker, double (&displacements)[4]) {
     
     /*--- The aeroelastic model solved in this routine is the typical section wing model
      The details of the implementation can be found in J.J. Alonso "Fully-Implicit Time-Marching Aeroelastic Solutions" 1994.
@@ -1526,11 +1590,11 @@ void CSolver::SolveTypicalSectionWingModel(CGeometry *geometry, double Cl, doubl
     
     /*--- Calculate the total plunge and total pitch displacements for the unsteady step by summing the displacement at each sudo time step ---*/
     double pitch, plunge;
-    pitch = config->GetAeroelastic_pitch();
-    plunge = config->GetAeroelastic_plunge();
+    pitch = config->GetAeroelastic_pitch(iMarker);
+    plunge = config->GetAeroelastic_plunge(iMarker);
     
-    config->SetAeroelastic_pitch(pitch+dalpha);
-    config->SetAeroelastic_plunge(plunge+dy/b);
+    config->SetAeroelastic_pitch(iMarker ,pitch+dalpha);
+    config->SetAeroelastic_plunge(iMarker ,plunge+dy/b);
     
     /*--- Set the Aeroelastic solution at time n+1. This gets update every sudo time step
      and after convering the sudo time step the solution at n+1 get moved to the solution at n
@@ -1585,9 +1649,8 @@ CBaselineSolver::CBaselineSolver(CGeometry *geometry, CConfig *config, unsigned 
 
   /*--- In case there is no restart file ---*/
   if (restart_file.fail()) {
-    cout << "There is no SU2 restart file!!" << endl;
-    cout << "Press any key to exit..." << endl;
-    cin.get(); exit(1);
+    cout << "SU2 flow file " << filename << " not found" << endl;
+    exit(1);
   }
   
   /*--- Output the file name to the console. ---*/
@@ -1784,7 +1847,7 @@ void CBaselineSolver::Set_MPI_Solution(CGeometry *geometry, CConfig *config) {
   
 }
 
-void CBaselineSolver::GetRestart(CGeometry *geometry, CConfig *config, int val_iter) {
+void CBaselineSolver::LoadRestart(CGeometry **geometry, CSolver ***solver, CConfig *config, int val_iter) {
   
 	int rank = MASTER_NODE;
 #ifndef NO_MPI
@@ -1818,8 +1881,7 @@ void CBaselineSolver::GetRestart(CGeometry *geometry, CConfig *config, int val_i
 	/*--- In case there is no file ---*/
 	if (solution_file.fail()) {
 		cout << "There is no SU2 restart file!!" << endl;
-		cout << "Press any key to exit..." << endl;
-		cin.get(); exit(1);
+		exit(1);
 	}
   
   /*--- Output the file name to the console. ---*/
@@ -1835,15 +1897,15 @@ void CBaselineSolver::GetRestart(CGeometry *geometry, CConfig *config, int val_i
 	/*--- In case this is a parallel simulation, we need to perform the
    Global2Local index transformation first. ---*/
 	long *Global2Local = NULL;
-	Global2Local = new long[geometry->GetGlobal_nPointDomain()];
+	Global2Local = new long[geometry[ZONE_0]->GetGlobal_nPointDomain()];
 	/*--- First, set all indices to a negative value by default ---*/
-	for(iPoint = 0; iPoint < geometry->GetGlobal_nPointDomain(); iPoint++) {
+	for(iPoint = 0; iPoint < geometry[ZONE_0]->GetGlobal_nPointDomain(); iPoint++) {
 		Global2Local[iPoint] = -1;
 	}
   
 	/*--- Now fill array with the transform values only for local points ---*/
-	for(iPoint = 0; iPoint < geometry->GetnPointDomain(); iPoint++) {
-		Global2Local[geometry->node[iPoint]->GetGlobalIndex()] = iPoint;
+	for(iPoint = 0; iPoint < geometry[ZONE_0]->GetnPointDomain(); iPoint++) {
+		Global2Local[geometry[ZONE_0]->node[iPoint]->GetGlobalIndex()] = iPoint;
 	}
   
 	/*--- Read all lines in the restart file ---*/

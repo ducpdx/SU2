@@ -2,7 +2,7 @@
  * \file integration_structure.cpp
  * \brief This subroutine includes the space and time integration structure.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -39,8 +39,12 @@ CIntegration::~CIntegration(void) {
 	delete [] Cauchy_Serie;
 }
 
-void CIntegration::Space_Integration(CGeometry *geometry, CSolver **solver_container, CNumerics **numerics,
-                                     CConfig *config, unsigned short iMesh, unsigned short iRKStep, unsigned short RunTime_EqSystem) {
+void CIntegration::Space_Integration(CGeometry *geometry,
+                                     CSolver **solver_container,
+                                     CNumerics **numerics,
+                                     CConfig *config, unsigned short iMesh,
+                                     unsigned short iRKStep,
+                                     unsigned short RunTime_EqSystem) {
 	unsigned short iMarker;
     
 	unsigned short MainSolver = config->GetContainerPosition(RunTime_EqSystem);
@@ -127,11 +131,8 @@ void CIntegration::Space_Integration(CGeometry *geometry, CSolver **solver_conta
 			case LOAD_BOUNDARY:
 				solver_container[MainSolver]->BC_Normal_Load(geometry, solver_container, numerics[CONV_BOUND_TERM], config, iMarker);
 				break;
-			case FWH_SURFACE:
-				solver_container[MainSolver]->BC_FWH(geometry, solver_container, numerics[CONV_BOUND_TERM], config, iMarker);
-				break;
-			case WAVE_OBSERVER:
-				solver_container[MainSolver]->BC_Observer(geometry, solver_container, numerics[CONV_BOUND_TERM], config, iMarker);
+      case PRESSURE_BOUNDARY:
+				solver_container[MainSolver]->BC_Pressure(geometry, solver_container, numerics[CONV_BOUND_TERM], config, iMarker);
 				break;
 			case NEUMANN:
 				solver_container[MainSolver]->BC_Neumann(geometry, solver_container, numerics[CONV_BOUND_TERM], config, iMarker);
@@ -166,7 +167,8 @@ void CIntegration::Adjoint_Setup(CGeometry ***geometry, CSolver ****solver_conta
 
 	unsigned short iMGLevel;
 
-	if ( ( ((RunTime_EqSystem == RUNTIME_ADJFLOW_SYS) || (RunTime_EqSystem == RUNTIME_LINFLOW_SYS)) && (Iteration == 0) ) )
+	if ( ( ((RunTime_EqSystem == RUNTIME_ADJFLOW_SYS) ||
+          (RunTime_EqSystem == RUNTIME_LINFLOW_SYS)) && (Iteration == 0) ) ){
 		for (iMGLevel = 0; iMGLevel <= config[iZone]->GetMGLevels(); iMGLevel++) {
 
 			/*--- Set the time step in all the MG levels ---*/
@@ -187,7 +189,30 @@ void CIntegration::Adjoint_Setup(CGeometry ***geometry, CSolver ****solver_conta
 			}
 
 		}
-
+  } else if ((RunTime_EqSystem == RUNTIME_ADJTNE2_SYS) && (Iteration == 0)) {
+    for (iMGLevel = 0; iMGLevel <= config[iZone]->GetMGLevels(); iMGLevel++) {
+      
+			/*--- Set the time step in all the MG levels ---*/
+			solver_container[iZone][iMGLevel][TNE2_SOL]->SetTime_Step(geometry[iZone][iMGLevel],
+                                                                solver_container[iZone][iMGLevel],
+                                                                config[iZone], iMGLevel, Iteration);
+      
+			/*--- Set the force coefficients ---*/
+			solver_container[iZone][iMGLevel][TNE2_SOL]->SetTotal_CDrag(solver_container[iZone][MESH_0][TNE2_SOL]->GetTotal_CDrag());
+			solver_container[iZone][iMGLevel][TNE2_SOL]->SetTotal_CLift(solver_container[iZone][MESH_0][TNE2_SOL]->GetTotal_CLift());
+			solver_container[iZone][iMGLevel][TNE2_SOL]->SetTotal_CT(solver_container[iZone][MESH_0][TNE2_SOL]->GetTotal_CT());
+			solver_container[iZone][iMGLevel][TNE2_SOL]->SetTotal_CQ(solver_container[iZone][MESH_0][TNE2_SOL]->GetTotal_CQ());
+      
+			/*--- Restrict solution and gradients to the coarse levels ---*/
+			if (iMGLevel != config[iZone]->GetMGLevels()) {
+				SetRestricted_Solution(RUNTIME_TNE2_SYS, solver_container[iZone][iMGLevel], solver_container[iZone][iMGLevel+1],
+                               geometry[iZone][iMGLevel], geometry[iZone][iMGLevel+1], config[iZone]);
+				SetRestricted_Gradient(RUNTIME_TNE2_SYS, solver_container[iZone][iMGLevel], solver_container[iZone][iMGLevel+1],
+                               geometry[iZone][iMGLevel], geometry[iZone][iMGLevel+1], config[iZone]);
+			}
+      
+		}
+  }
 }
 
 void CIntegration::Time_Integration(CGeometry *geometry, CSolver **solver_container, CConfig *config, unsigned short iRKStep,
@@ -355,6 +380,77 @@ void CIntegration::SetDualTime_Solver(CGeometry *geometry, CSolver *solver, CCon
     if (config->GetGrid_Movement() && config->GetKind_GridMovement(ZONE_0) == AEROELASTIC && geometry->GetFinestMGLevel()) {
         config->SetAeroelastic_n1();
         config->SetAeroelastic_n();
+        
+    /*--- Also communicate plunge and pitch to the master node. Needed for output in case of parallel run ---*/
+#ifndef NO_MPI
+        double plunge, pitch, *plunge_all = NULL, *pitch_all = NULL;
+        unsigned short iMarker, iMarker_Monitoring;
+        unsigned long iProcessor, owner, *owner_all = NULL;
+        
+        string Marker_Tag, Monitoring_Tag;
+        
+#ifdef WINDOWS
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &nProcessor);
+#else
+        int rank = MPI::COMM_WORLD.Get_rank();
+        int nProcessor = MPI::COMM_WORLD.Get_size();
+#endif
+        /*--- Only if mater node allocate memory ---*/
+        if (rank == MASTER_NODE) {
+            plunge_all = new double[nProcessor];
+            pitch_all  = new double[nProcessor];
+            owner_all  = new unsigned long[nProcessor];
+        }
+        
+        /*--- Find marker and give it's plunge and pitch coordinate to the master node ---*/
+        for (iMarker_Monitoring = 0; iMarker_Monitoring < config->GetnMarker_Monitoring(); iMarker_Monitoring++) {
+            
+            for (iMarker = 0; iMarker < config->GetnMarker_All(); iMarker++) {
+                
+                Monitoring_Tag = config->GetMarker_Monitoring(iMarker_Monitoring);
+                Marker_Tag = config->GetMarker_All_Tag(iMarker);
+                if (Marker_Tag == Monitoring_Tag) { owner = 1; break;
+                } else {
+                    owner = 0;
+                }
+                
+            }
+                plunge = config->GetAeroelastic_plunge(iMarker_Monitoring);
+                pitch  = config->GetAeroelastic_pitch(iMarker_Monitoring);
+                
+                /*--- Gather the data on the master node. ---*/
+#ifdef WINDOWS
+                MPI_Barrier(MPI_COMM_WORLD);
+                MPI_Gather(&plunge, 1, MPI::DOUBLE, plunge_all, 1, MPI::DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
+                MPI_Gather(&pitch, 1, MPI::DOUBLE, pitch_all, 1, MPI::DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
+                MPI_COMM_WORLD.Gather(&owner, 1, MPI::UNSIGNED_LONG, owner_all, 1, MPI::UNSIGNED_LONG, MASTER_NODE, MPI_COMM_WORLD);
+#else
+                MPI::COMM_WORLD.Barrier();
+                MPI::COMM_WORLD.Gather(&plunge, 1, MPI::DOUBLE, plunge_all, 1, MPI::DOUBLE, MASTER_NODE);
+                MPI::COMM_WORLD.Gather(&pitch, 1, MPI::DOUBLE, pitch_all, 1, MPI::DOUBLE, MASTER_NODE);
+                MPI::COMM_WORLD.Gather(&owner, 1, MPI::UNSIGNED_LONG, owner_all, 1, MPI::UNSIGNED_LONG, MASTER_NODE);
+#endif
+            
+            /*--- Set plunge and pitch on the master node ---*/
+            if (rank == MASTER_NODE) {
+                for (iProcessor = 0; iProcessor < nProcessor; iProcessor++) {
+                    if (owner_all[iProcessor] == 1) {
+                        config->SetAeroelastic_plunge(iMarker_Monitoring,plunge_all[iProcessor]);
+                        config->SetAeroelastic_pitch(iMarker_Monitoring,pitch_all[iProcessor]);
+                        break;
+                    }
+                }
+            }
+            
+        }
+        
+        if (rank == MASTER_NODE) {
+            delete [] plunge_all;
+            delete [] pitch_all;
+            delete [] owner_all;
+        }
+#endif
     }
     
 }

@@ -1,8 +1,8 @@
-/*!
+ /*!
  * \file linear_solvers_structure.cpp
  * \brief Main classes required for solving linear systems of equations
  * \author Current Development: Stanford University.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -346,7 +346,7 @@ unsigned long CSysSolve::FGMRES(const CSysVector & b, CSysVector & x, CMatrixVec
     beta = fabs(g[i+1]);
     
     /*---  Output the relative residual if necessary ---*/
-    if ((((monitoring) && (rank == 0)) && ((i+1) % 5 == 0)) && (rank == 0)) writeHistory(i+1, beta, norm0);
+    if ((((monitoring) && (rank == 0)) && ((i+1) % 100 == 0)) && (rank == 0)) writeHistory(i+1, beta, norm0);
   }
 
   /*---  Solve the least-squares system and update solution ---*/

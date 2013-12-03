@@ -3,7 +3,7 @@
  * \file solution_direct_heat.cpp
  * \brief Main subrotuines for solving the heat equation.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -62,10 +62,10 @@ CHeatSolver::CHeatSolver(CGeometry *geometry, CConfig *config) : CSolver() {
   
 	/*--- Initialization of matrix structures ---*/
   
-	StiffMatrixSpace.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
-	StiffMatrixTime.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
+	StiffMatrixSpace.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
+	StiffMatrixTime.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
   if (rank == MASTER_NODE) cout << "Initialize jacobian structure (Linear Elasticity)." << endl;
-	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
+	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
   
   /*--- Initialization of linear solver structures ---*/
   
@@ -105,8 +105,6 @@ CHeatSolver::CHeatSolver(CGeometry *geometry, CConfig *config) : CSolver() {
 	} else {
     
     cout << "Heat restart file not currently configured!!" << endl;
-    cout << "Press any key to exit..." << endl;
-    cin.get();
     exit(1);
     
 		string mesh_filename = config->GetSolution_FlowFileName();
@@ -118,8 +116,6 @@ CHeatSolver::CHeatSolver(CGeometry *geometry, CConfig *config) : CSolver() {
     
 		if (restart_file.fail()) {
 			cout << "There is no Heat restart file!!" << endl;
-			cout << "Press any key to exit..." << endl;
-			cin.get();
 			exit(1);
 		}
 		unsigned long index;

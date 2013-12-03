@@ -2,7 +2,7 @@
  * \file solution_adjoint_turbulent.cpp
  * \brief Main subrotuines for solving adjoint problems (Euler, Navier-Stokes, etc.).
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -70,7 +70,7 @@ CAdjTurbSolver::CAdjTurbSolver(CGeometry *geometry, CConfig *config) : CSolver()
 	}
   
 	/*--- Initialization of the structure of the whole Jacobian ---*/
-	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
+	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
   Jacobian.SetValZero();
   LinSysSol.Initialize(nPoint, nPointDomain, nVar, 0.0);
   LinSysRes.Initialize(nPoint, nPointDomain, nVar, 0.0);
@@ -112,8 +112,7 @@ CAdjTurbSolver::CAdjTurbSolver(CGeometry *geometry, CConfig *config) : CSolver()
 		/*--- In case there is no file ---*/
 		if (restart_file.fail()) {
 			cout << "There is no adjoint restart file!! " << filename.data() << "."<< endl;
-			cout << "Press any key to exit..." << endl;
-			cin.get(); exit(1);
+			exit(1);
 		}
     
     /*--- In case this is a parallel simulation, we need to perform the

@@ -2,7 +2,7 @@
  * \file primal_grid_structure.cpp
  * \brief Main classes for defining the primal grid elements (triangle, tetrahedra, etc.).
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -95,9 +95,6 @@ CVertexMPI::CVertexMPI(unsigned long val_point, unsigned short val_ndim) : CPrim
 	
 	/*--- By default, no rotation in the solution ---*/
 	Rotation_Type = 0;
-  
-  /*--- By default, assume a single-zone mesh ---*/
-  Matching_Zone = ZONE_0;
 	
 }
 
@@ -530,6 +527,7 @@ void CWedge::Change_Orientation(void) {
 	Nodes[1] = Point_0;
 	Nodes[3] = Point_4;
 	Nodes[4] = Point_3;
+  
 }
 
 unsigned short CPyramid::Faces[5][4] = {{0,3,2,1},{4,3,0,0},{4,0,1,1},{2,4,1,1},{3,4,2,2}};

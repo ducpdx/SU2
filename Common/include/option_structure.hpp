@@ -2,7 +2,7 @@
  * \file option_structure.hpp
  * \brief Defines classes for referencing options for easy input in CConfig
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Many of the classes in this file are templated, and therefore must
  * be declared and defined here; to keep all elements together, there
@@ -97,7 +97,8 @@ enum SU2_COMPONENT {
 	SU2_GDC = 6,	/*!< \brief Running the SU2_GDC software. */
 	SU2_PBC = 7,	/*!< \brief Running the SU2_PBC software. */
 	SU2_SMC = 8,	/*!< \brief Running the SU2_SMC software. */
-	SU2_SOL = 9	  /*!< \brief Running the SU2_SOL software. */
+	SU2_SOL = 9,	/*!< \brief Running the SU2_SOL software. */
+  SU2_EDU = 10	/*!< \brief Running the SU2_CFD software. */
 };
 
 const unsigned int MAX_PROCESSORS = 1000;	/*!< \brief Maximum number of processors. */
@@ -135,7 +136,6 @@ const double PI_NUMBER = 4.0 * atan(1.0);	/*!< \brief Pi number. */
 const unsigned int MAX_NUMBER_DOMAIN = 1000;	/*!< \brief Maximum number of domains. */
 const unsigned int MAX_COMM_LEVEL = 1000;	/*!< \brief Maximum number of communication levels. */
 const unsigned int MAX_NUMBER_PERIODIC = 10;	/*!< \brief Maximum number of periodic boundary conditions. */
-const unsigned int MAX_NUMBER_SLIDING  = 10;	/*!< \brief Maximum number of sliding boundary conditions. */
 const int MASTER_NODE = 0;			/*!< \brief Master node for MPI parallelization. */
 const int SINGLE_NODE = 1;			/*!< \brief There is only a node in the MPI parallelization. */
 const int AUX_NODE = 1;			/*!< \brief Computational node that is used for IO stuff. */
@@ -185,25 +185,17 @@ enum ENUM_SOLVER {
 	NAVIER_STOKES = 2,			/*!< \brief Definition of the Navier-Stokes' solver. */
 	RANS = 3,				/*!< \brief Definition of the Reynolds-averaged Navier-Stokes' (RANS) solver. */
 	POISSON_EQUATION = 4,       	/*!< \brief Definition of the poisson potential solver. */
-	PLASMA_EULER = 8,	/*!< \brief Definition of the plasma solver. */
-	PLASMA_NAVIER_STOKES = 9,	/*!< \brief Definition of the plasma solver. */
 	WAVE_EQUATION = 10,	/*!< \brief Definition of the wave solver. */
 	HEAT_EQUATION = 29,								/*!< \brief Definition of the heat solver. */
 	LINEAR_ELASTICITY = 11,	/*!< \brief Definition of the FEA solver. */
 	FLUID_STRUCTURE_EULER = 12,	/*!< \brief Definition of the FEA solver. */
 	FLUID_STRUCTURE_NAVIER_STOKES = 13,	/*!< \brief Definition of the FEA solver. */
 	FLUID_STRUCTURE_RANS = 14,	/*!< \brief Definition of the FEA solver. */
-	AEROACOUSTIC_EULER = 15,	/*!< \brief Definition of the aeroacoustic solver. */
-	AEROACOUSTIC_NAVIER_STOKES = 16,	/*!< \brief Definition of the aeroacoustic solver. */
-	AEROACOUSTIC_RANS = 17,	/*!< \brief Definition of the aeroacoustic solver. */	
 	ADJ_EULER = 18,			/*!< \brief Definition of the continuous adjoint Euler's solver. */
 	ADJ_NAVIER_STOKES = 19,		/*!< \brief Definition of the continuous adjoint Navier-Stokes' solver. */
 	ADJ_RANS = 20,				/*!< \brief Definition of the continuous adjoint Reynolds-averaged Navier-Stokes' (RANS) solver. */
 	LIN_EULER = 21,			/*!< \brief Definition of the linear Euler's solver. */
 	LIN_NAVIER_STOKES = 22,		/*!< \brief Definition of the linear Navier-Stokes' solver. */
-	ADJ_PLASMA_NAVIER_STOKES = 26,	/*!< \brief Definition of the adjoint plasma solver. */
-	ADJ_PLASMA_EULER = 27,	/*!< \brief Definition of the adjoint plasma solver. */
-	ADJ_AEROACOUSTIC_EULER = 28,			/*!< \brief Definition of the adjoint aeroacoustic Euler solver. */
 	TEMPLATE_SOLVER = 30,                  /*!< \brief Definition of template solver. */
   TNE2_EULER = 31,
   TNE2_NAVIER_STOKES = 32,
@@ -226,17 +218,12 @@ static const map<string, ENUM_SOLVER> Solver_Map = CCreateMap<string, ENUM_SOLVE
 ("TNE2_NAVIER_STOKES", TNE2_NAVIER_STOKES)
 ("ADJ_TNE2_EULER", ADJ_TNE2_EULER)
 ("ADJ_TNE2_NAVIER_STOKES", ADJ_TNE2_NAVIER_STOKES)
-("PLASMA_NAVIER_STOKES", PLASMA_NAVIER_STOKES)
-("PLASMA_EULER", PLASMA_EULER)
 ("WAVE_EQUATION", WAVE_EQUATION)
 ("HEAT_EQUATION", HEAT_EQUATION)
 ("LINEAR_ELASTICITY", LINEAR_ELASTICITY)
 ("FLUID_STRUCTURE_EULER", FLUID_STRUCTURE_EULER)
 ("FLUID_STRUCTURE_NAVIER_STOKES", FLUID_STRUCTURE_NAVIER_STOKES)
 ("FLUID_STRUCTURE_RANS", FLUID_STRUCTURE_RANS)
-("AEROACOUSTIC_EULER", AEROACOUSTIC_EULER)
-("AEROACOUSTIC_NAVIER_STOKES", AEROACOUSTIC_NAVIER_STOKES)
-("AEROACOUSTIC_RANS", AEROACOUSTIC_RANS)
 ("TEMPLATE_SOLVER", TEMPLATE_SOLVER);
 
 /*!
@@ -260,18 +247,16 @@ enum RUNTIME_TYPE {
 	RUNTIME_FLOW_SYS = 2,			/*!< \brief One-physics case, the code is solving the flow equations(Euler and Navier-Stokes). */
 	RUNTIME_TURB_SYS = 3,			/*!< \brief One-physics case, the code is solving the turbulence model. */
 	RUNTIME_POISSON_SYS = 4,			/*!< \brief One-physics case, the code is solving the poissonal potential equation. */
-	RUNTIME_PLASMA_SYS = 15,		/*!< \brief One-physics case, the code is solving the plasma equations. */
-	RUNTIME_WAVE_SYS = 8,		/*!< \brief One-physics case, the code is solving the wave equation. */
-	RUNTIME_HEAT_SYS = 21,		/*!< \brief One-physics case, the code is solving the heat equation. */
-	RUNTIME_FEA_SYS = 20,		/*!< \brief One-physics case, the code is solving the FEA equation. */
-	RUNTIME_ADJPOT_SYS = 5,		/*!< \brief One-physics case, the code is solving the adjoint potential flow equation. */
+  RUNTIME_ADJPOT_SYS = 5,		/*!< \brief One-physics case, the code is solving the adjoint potential flow equation. */
 	RUNTIME_ADJFLOW_SYS = 6,		/*!< \brief One-physics case, the code is solving the adjoint equations is being solved (Euler and Navier-Stokes). */
-	RUNTIME_ADJTURB_SYS = 7,		/*!< \brief One-physics case, the code is solving the adjoint turbulence model. */
-	RUNTIME_LINPOT_SYS = 9,		/*!< \brief One-physics case, the code is solving the linear potential flow equations. */
+  RUNTIME_ADJTURB_SYS = 7,		/*!< \brief One-physics case, the code is solving the adjoint turbulence model. */
+	RUNTIME_WAVE_SYS = 8,		/*!< \brief One-physics case, the code is solving the wave equation. */
+  RUNTIME_LINPOT_SYS = 9,		/*!< \brief One-physics case, the code is solving the linear potential flow equations. */
 	RUNTIME_LINFLOW_SYS = 10,		/*!< \brief One-physics case, the code is solving the linear equations is being solved (Euler and Navier-Stokes). */
-	RUNTIME_MULTIGRID_SYS = 14,   	/*!< \brief Full Approximation Storage Multigrid system of equations. */
-	RUNTIME_ADJPLASMA_SYS = 19,		/*!< \brief One-physics case, the code is solving the plasma equations. */
-	RUNTIME_TRANS_SYS = 22,			/*!< \brief One-physics case, the code is solving the turbulence model. */
+  RUNTIME_MULTIGRID_SYS = 14,   	/*!< \brief Full Approximation Storage Multigrid system of equations. */
+	RUNTIME_FEA_SYS = 20,		/*!< \brief One-physics case, the code is solving the FEA equation. */
+	RUNTIME_HEAT_SYS = 21,		/*!< \brief One-physics case, the code is solving the heat equation. */
+  RUNTIME_TRANS_SYS = 22,			/*!< \brief One-physics case, the code is solving the turbulence model. */
   RUNTIME_TNE2_SYS = 23,  /*!< \brief One-physics case, the code is solving the two-temperature model. */
   RUNTIME_ADJTNE2_SYS = 24  /*!< \brief One-physics case, the code is solving the two-temperature model. */
 };
@@ -287,10 +272,6 @@ const int LINTURB_SOL = 3;	/*!< \brief Position of the linearized turbulence mod
 const int TNE2_SOL = 0;		/*!< \brief Position of the mean flow solution in the solution container array. */
 const int ADJTNE2_SOL = 1;	/*!< \brief Position of the continuous adjoint flow solution in the solution container array. */
 const int LINTNE2_SOL = 1;	/*!< \brief Position of the linearized flow solution in the solution container array. */
-
-const int PLASMA_SOL = 0;	/*!< \brief Position of the plasma solution in the solution container array. */
-const int ADJPLASMA_SOL = 1;	/*!< \brief Position of the continuous adjoint plasma solution in the solution container array. */
-const int LINPLASMA_SOL = 1;	/*!< \brief Position of the linearized plasma solution in the solution container array. */
 
 const int TRANS_SOL = 4;	/*!< \brief Position of the transition model solution in the solver container array. */
 const int POISSON_SOL = 2;		/*!< \brief Position of the electronic potential solution in the solver container array. */
@@ -432,7 +413,9 @@ enum ENUM_UPWIND {
   MSW_1ST = 12,     /*!< \brief First order Modified Steger-Warming method. */
   MSW_2ND = 13,     /*!< \brief Second order Modified Steger-Warming method. */
 	ROE_TURKEL_1ST = 14,			/*!< \brief First order Roe-Turkel's upwind numerical method. */
-	ROE_TURKEL_2ND = 15			/*!< \brief Second order Roe-Turkel's upwind numerical method. */
+	ROE_TURKEL_2ND = 15,			/*!< \brief Second order Roe-Turkel's upwind numerical method. */
+  AUSMPWPLUS_1ST = 16,  /*!< \brief First order AUSMPW+ numerical method. */
+  AUSMPWPLUS_2ND = 17   /*!< \brief Second order AUSMPW+ numerical method. */
   
 };
 static const map<string, ENUM_UPWIND> Upwind_Map = CCreateMap<string, ENUM_UPWIND>
@@ -443,6 +426,8 @@ static const map<string, ENUM_UPWIND> Upwind_Map = CCreateMap<string, ENUM_UPWIN
 ("ROE_TURKEL_2ND", ROE_TURKEL_2ND)
 ("AUSM-1ST_ORDER", AUSM_1ST)
 ("AUSM-2ND_ORDER", AUSM_2ND)
+("AUSMPW+-1ST_ORDER", AUSMPWPLUS_1ST)
+("AUSMPW+-2ND_ORDER", AUSMPWPLUS_2ND)
 ("HLLC-1ST_ORDER", HLLC_1ST)
 ("HLLC-2ND_ORDER", HLLC_2ND)
 ("SW-1ST_ORDER", SW_1ST)
@@ -517,12 +502,14 @@ static const map<string, ENUM_SOURCEJAC> SourceJac_Map = CCreateMap<string, ENUM
 enum ENUM_TURB_MODEL {
 	NO_TURB_MODEL = 0,            /*!< \brief No turbulence model. */
 	SA = 1,                       /*!< \brief Kind of Turbulent model (Spalart-Allmaras). */
-	SST = 2       		/*!< \brief Kind of Turbulence model (Menter SST). */
+	SST = 2,       		/*!< \brief Kind of Turbulence model (Menter SST). */
+  ML  = 3       		/*!< \brief Kind of Turbulence model (Machine Learning). */
 };
 static const map<string, ENUM_TURB_MODEL> Turb_Model_Map = CCreateMap<string, ENUM_TURB_MODEL>
 ("NONE", NO_TURB_MODEL)
 ("SA", SA)
-("SST", SST);
+("SST", SST)
+("ML", ML);
 
 /*!
  * \brief types of transition models
@@ -598,16 +585,14 @@ enum BC_TYPE {
 	DISPLACEMENT_BOUNDARY = 15,		/*!< \brief Boundary displacement definition. */
 	LOAD_BOUNDARY = 16,		/*!< \brief Boundary Load definition. */
 	FLOWLOAD_BOUNDARY = 17,		/*!< \brief Boundary Load definition. */
-	FWH_SURFACE = 18,		/*!< \brief FW-H surface definition (aeroacoustic computations). */
-	WAVE_OBSERVER = 19,		/*!< \brief Wave observer surface definition. */
 	ELEC_DIELEC_BOUNDARY = 22,	/*!< \brief Dipoisson boundary definition for the poissonal potential. */
 	ELEC_NEUMANN = 23,		/*!< \brief Boundary Neumann definition. */
   SUPERSONIC_INLET = 24,		/*!< \brief Boundary supersonic inlet definition. */
 	NACELLE_INFLOW = 25,		/*!< \brief Boundary nacelle inflow. */
 	NACELLE_EXHAUST = 26,		/*!< \brief Boundary nacelle exhaust. */
-	SLIDING_INTERFACE = 27,		/*!< \brief Boundary sliding interface definition. */
   ISOTHERMAL = 28,      /*!< \brief No slip isothermal wall boundary condition. */
   HEAT_FLUX  = 29,      /*!< \brief No slip constant heat flux wall boundary condition. */
+  PRESSURE_BOUNDARY = 30,   	/*!< \brief Pressure boundary condition. */
 	SEND_RECEIVE = 99		/*!< \brief Boundary send-receive definition. */
 };
 
@@ -657,7 +642,6 @@ enum ENUM_OBJECTIVE {
 	TORQUE_COEFFICIENT = 16,		/*!< \brief Torque objective function definition. */
 	FIGURE_OF_MERIT = 17,		/*!< \brief Rotor Figure of Merit objective function definition. */
 	FREE_SURFACE = 18,				/*!< \brief Free Surface objective function definition. */
-	NOISE = 19,             /*!< \brief Noise objective function definition. */
 	MAX_THICKNESS = 20,       /*!< \brief Maximum thickness. */
 	TOTAL_VOLUME = 21,       /*!< \brief Total volume. */
   CLEARANCE = 22,       /*!< \brief Clearance. */
@@ -690,7 +674,6 @@ static const map<string, ENUM_OBJECTIVE> Objective_Map = CCreateMap<string, ENUM
 ("HEAT_LOAD", HEAT_LOAD)
 ("FIGURE_OF_MERIT", FIGURE_OF_MERIT)
 ("FREE_SURFACE", FREE_SURFACE)
-("NOISE", NOISE)
 ("TOTAL_VOLUME", TOTAL_VOLUME)
 ("MAX_THICKNESS", MAX_THICKNESS)
 ("CLEARANCE", CLEARANCE)
@@ -879,7 +862,8 @@ enum ENUM_PARAM {
   SURFACE_FILE = 20,		   /*!< Nodal coordinates set using a surface file. */
   COSINE_BUMP = 21,		/*!< \brief Gauss bump function for airfoil deformation. */
   FOURIER = 22,		/*!< \brief Fourier function for airfoil deformation. */
-  SPHERICAL = 23		/*!< \brief Spherical geometry parameterization with spline-based radial profile. */
+  SPHERICAL = 23,		/*!< \brief Spherical geometry parameterization with spline-based radial profile. */
+  AIRFOIL = 24		/*!< \brief Airfoil definition as design variables. */
 };
 static const map<string, ENUM_PARAM> Param_Map = CCreateMap<string, ENUM_PARAM>
 ("NO_DEFORMATION", NO_DEFORMATION)
@@ -901,6 +885,7 @@ static const map<string, ENUM_PARAM> Param_Map = CCreateMap<string, ENUM_PARAM>
 ("STRETCH", STRETCH)
 ("COSINE_BUMP", COSINE_BUMP)
 ("FOURIER", FOURIER)
+("AIRFOIL", AIRFOIL)
 ("SURFACE_FILE", SURFACE_FILE);
 
 /*!
@@ -947,17 +932,6 @@ static const map<string, ENUM_LINEAR_SOLVER_PREC> Linear_Solver_Prec_Map = CCrea
 ("JACOBI", JACOBI)
 ("LU_SGS", LU_SGS)
 ("LINELET", LINELET);
-
-/*!
- * \brief types of grid deformation techniques
- */
-enum ENUM_DEFORM {
-	SPRING = 1,  	         	/*!< \brief Classical spring analogy as the grid deformation technique. */
-  FEA = 2                 /*!< \brief Movement of the grid using an FEA based method. */
-};
-static const map<string, ENUM_DEFORM> Deform_Map = CCreateMap<string, ENUM_DEFORM>
-("SPRING", SPRING)
-("FEA", FEA);
 
 /*!
  * \brief types of analytic definitions for various geometries
@@ -1268,7 +1242,11 @@ public:
     
     int rank = MASTER_NODE;
 #ifndef NO_MPI
-    rank = MPI::COMM_WORLD.Get_rank();
+#ifdef WINDOWS
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#else
+	rank = MPI::COMM_WORLD.Get_rank();
+#endif   
 #endif
     
 		typename map<string,Tenum>::const_iterator it;
@@ -1283,8 +1261,13 @@ public:
 #ifdef NO_MPI
         exit(1);
 #else
+#ifdef WINDOWS
+		MPI_Abort(MPI_COMM_WORLD,1);
+		MPI_Finalize();
+#else
         MPI::COMM_WORLD.Abort(1);
         MPI::Finalize();
+#endif
 #endif
 			}
 			*(*ref_) = it->second;
@@ -1302,8 +1285,13 @@ public:
 #ifdef NO_MPI
           exit(1);
 #else
-          MPI::COMM_WORLD.Abort(1);
-          MPI::Finalize();
+#ifdef WINDOWS
+		MPI_Abort(MPI_COMM_WORLD,1);
+		MPI_Finalize();
+#else
+        MPI::COMM_WORLD.Abort(1);
+        MPI::Finalize();
+#endif
 #endif
 				}
 				(*ref_)[i] = it->second;
@@ -1366,93 +1354,6 @@ public:
 			cout << (*marker_ref_)[i] << ", ";
 		cout << endl;
 	}
-};
-
-/*!
- * \class CMarkerSlidingRef
- * \brief Specialized option for sliding boundary markers
- * \author T. Economon
- */
-class CMarkerSlidingRef : public CAnyOptionRef {
-private:
-	unsigned short* nMarker_Sliding_;     /*!< \brief Number of sliding boundary markers. */
-	string** Marker_SlideBound_;          /*!< \brief Sliding boundary markers. */
-	string** Marker_SlideDonor_;          /*!< \brief Sliding boundary donor markers. */
-	unsigned short **SlideBound_Zone_;    /*!< \brief Zone number of the sliding mesh markers. */
-	unsigned short **SlideDonor_Zone_;    /*!< \brief Zone number of the donor sliding mesh markers. */
-
-public:
-
-	/*!
-	 * \brief constructor for sliding marker option
-	 * \param[in] nMarker_Sliding - number of periodic boundary markers
-	 * \param[in] Marker_SlideBound - sliding boundary markers
-	 * \param[in] Marker_SlideDonor - sliding boundary donor markers
-	 * \param[in] SlideBound_Zone - zone number of the sliding mesh markers
-	 * \param[in] SlideDonor_Zone - zone number of the donor sliding mesh markers
-	 */
-	CMarkerSlidingRef(unsigned short & nMarker_Sliding, string* & Marker_SlideBound, string* & Marker_SlideDonor,
-			unsigned short* & SlideBound_Zone, unsigned short* & SlideDonor_Zone) {
-		nMarker_Sliding_ = &nMarker_Sliding;
-		Marker_SlideBound_ = &Marker_SlideBound;
-		*Marker_SlideBound_ = NULL;
-		Marker_SlideDonor_ = &Marker_SlideDonor;
-		*Marker_SlideDonor_ = NULL;
-		SlideBound_Zone_ = &SlideBound_Zone;
-		*SlideBound_Zone_ = NULL;
-		SlideDonor_Zone_ = &SlideDonor_Zone;
-		*SlideDonor_Zone_ = NULL;
-	}
-
-	/*!
-	 * \brief sets the value of the sliding boundary parameters given the vector of strings
-	 * \param[in] value - a set of strings used to define the option
-	 */
-	void SetValue(const vector<string> & value) {
-		if ( (*Marker_SlideBound_ != NULL) || (*Marker_SlideDonor_ != NULL) ||
-				(*SlideBound_Zone_ != NULL) || (*SlideDonor_Zone_ != NULL) ) {
-			cerr << "Error in CMarkerSlidingRef::SetValue(): "
-					<< "one or more sliding-marker option arrays have already been allocated."
-					<< endl;
-			throw(-1);
-		}
-		if (static_cast<int>(value.size()) % 4 != 0) {
-			if (value[0].compare("NONE") == 0) {
-				*nMarker_Sliding_ = 0;
-				return;
-			}
-			cerr << "Error in CMarkerSlidingRef::SetValue(): "
-					<< "incorrect number of MARKER_SLIDING parameters in the configuration file."
-					<< endl;
-			throw(-1);
-		}
-		*nMarker_Sliding_ = static_cast<unsigned short>(value.size())/4;
-		(*Marker_SlideBound_) = new string[*nMarker_Sliding_];
-		(*SlideBound_Zone_)    = new unsigned short[*nMarker_Sliding_];
-		(*Marker_SlideDonor_) = new string[*nMarker_Sliding_];
-		(*SlideDonor_Zone_)      = new unsigned short[*nMarker_Sliding_];
-
-		stringstream ss;
-		unsigned short i = 0;
-		for (unsigned short iMarker_Sliding = 0; iMarker_Sliding < *nMarker_Sliding_; iMarker_Sliding++) {
-			ss << value[i++] << " ";
-			ss >> (*Marker_SlideBound_)[iMarker_Sliding];
-			ss << value[i++] << " ";
-			ss >> (*SlideBound_Zone_)[iMarker_Sliding];
-			ss << value[i++] << " ";
-			ss >> (*Marker_SlideDonor_)[iMarker_Sliding];
-			ss << value[i++] << " ";
-			ss >> (*SlideDonor_Zone_)[iMarker_Sliding];
-		}
-	}
-
-	/*!
-	 * \brief write the value of the option to std out (mostly for debugging)
-	 */
-	void WriteValue() {
-		cout << "CMarkerSlidingRef::WriteValue(): not implemented yet" << endl;
-	}
-
 };
 
 /*!
@@ -2312,6 +2213,7 @@ public:
 			case NACA_4DIGITS: nParamDV = 3; break;
 			case PARABOLIC: nParamDV = 2; break;
 			case OBSTACLE: nParamDV = 2; break;
+      case AIRFOIL: nParamDV = 2; break;
 			case STRETCH: nParamDV = 2; break;
 			case FFD_CONTROL_POINT: nParamDV = 7; break;
 			case FFD_DIHEDRAL_ANGLE: nParamDV = 7; break;

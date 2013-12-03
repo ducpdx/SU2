@@ -3,7 +3,7 @@
  * \brief Headers of the main subroutines of the code SU2_MDC.
  *        The subroutines and functions are in the <i>SU2_MDC.cpp</i> file.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -34,28 +34,3 @@
 #include "../../Common/include/grid_movement_structure.hpp"
 
 using namespace std;
-
-/*!
- * \brief Gets the number of zones in the mesh file for SU2_MDC.
- * \param[in] val_mesh_filename - Name of the file with the grid information.
- * \param[in] val_format - Format of the file with the grid information.
- * \param[in] config - Definition of the particular problem.
- * \return Total number of domains in the grid file.
- */
-unsigned short GetnZone(string val_mesh_filename, unsigned short val_format, CConfig *config);
-
-/*!
- * \brief Write a multi-zone mesh file after deforming the mesh using SU2_MDC.
- * \param[in] geometry - Multi-zone physical geometry container.
- * \param[in] config - Definition of the particular problem.
- * \param[in] nZone - Number of zones in the mesh.
- */
-void SetMultiZone_MeshFile(CPhysicalGeometry **geometry, CConfig **config, unsigned short nZone);
-
-/*!
- * \brief Write a single-zone mesh file after deforming the mesh using SU2_MDC.
- * \param[in] geometry - Multi-zone physical geometry container.
- * \param[in] config - Definition of the particular problem.
- * \param[in] surface_movement - durface information including FFD box.
- */
-void SetSingleZone_MeshFile(CPhysicalGeometry *geometry, CConfig *config, CSurfaceMovement *surface_movement);

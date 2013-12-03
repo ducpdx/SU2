@@ -2,7 +2,7 @@
  * \file dual_grid_structure.inl
  * \brief In-Line subroutines of the <i>dual_grid_structure.hpp</i> file.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -280,10 +280,6 @@ inline void CVertex::SetCoord(double *val_coord) {
 inline void CVertex::SetRotation_Type(short val_rotation_type) { Rotation_Type = val_rotation_type; }
 
 inline short CVertex::GetRotation_Type(void) { return Rotation_Type; }
-
-inline void CVertex::SetMatching_Zone(short val_matching_zone) { Matching_Zone = val_matching_zone; }
-
-inline short CVertex::GetMatching_Zone(void) { return Matching_Zone; }
 
 inline void CVertex::SetDonorPoint(long val_periodicpoint) { PeriodicPoint[0] = val_periodicpoint; }
 

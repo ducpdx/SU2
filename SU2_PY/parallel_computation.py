@@ -3,7 +3,7 @@
 ## \file parallel_computation.py
 #  \brief Python script for doing the continuous adjoint computation using the SU2 suite.
 #  \author Francisco Palacios, Tom Economon, Trent Lukaczyk, Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 2.0.8
+#  \version 2.0.9
 #
 # Stanford University Unstructured (SU2).
 # Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -47,6 +47,11 @@ def main():
     options.partitions  = int( options.partitions )
     options.compute     = options.compute.upper() == 'TRUE'
     options.divide_grid = options.divide_grid.upper() == 'TRUE'
+
+    if options.filename == None:
+        raise Exception("No config file provided. Use -f flag")
+    if options.partitions <= 0:
+        raise Exception("Number of partitions must be greater than 0. (-p)")
     
     parallel_computation( options.filename    ,
                           options.partitions  ,

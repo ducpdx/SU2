@@ -3,7 +3,7 @@
  * \brief Headers of the main subroutines for doing the complete dual grid structure.
  *        The subroutines and functions are in the <i>dual_grid_structure.cpp</i> file.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -38,7 +38,7 @@ using namespace std;
  * \brief Class for controlling the dual volume definition. The dual volume is compose by 
  *        three main elements: points, edges, and vertices.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CDualGrid{
 protected:
@@ -123,7 +123,7 @@ public:
  * \class CPoint
  * \brief Class for point definition (including control volume definition).
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CPoint : public CDualGrid {
 private:
@@ -657,7 +657,7 @@ public:
  * \class CEdge
  * \brief Class for defining an edge.
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CEdge : public CDualGrid {
 private:
@@ -794,7 +794,7 @@ public:
  * \class CVertex
  * \brief Class for vertex definition (equivalent to edges, but for the boundaries).
  * \author F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CVertex : public CDualGrid {
 private:
@@ -805,7 +805,6 @@ private:
 	double VarCoord[3];		/*!< \brief Used for storing the coordinate variation due to a surface modification. */
 	long PeriodicPoint[2];			/*!< \brief Store the periodic point of a boundary (iProcessor, iPoint) */
 	short Rotation_Type;			/*!< \brief Type of rotation associated with the vertex (MPI and periodic) */
-  short Matching_Zone;			/*!< \brief Donor zone associated with the vertex (MPI and sliding) */
 	unsigned long Normal_Neighbor; /*!< \brief Index of the closest neighbor. */
   unsigned long Donor_Elem;   /*!< \brief Store the donor element for interpolation across zones/ */
   double Basis_Function[3]; /*!< \brief Basis function values for interpolation across zones. */
@@ -944,18 +943,6 @@ public:
 	 * \return Value of the rotation that must be applied to the solution of the vertex
 	 */
 	short GetRotation_Type(void);
-  
-  /*!
-	 * \brief Get the matching zone index for a sliding interface vertex.
-	 * \return Matching zone for a sliding interface vertex.
-	 */
-  short GetMatching_Zone(void);
-	
-	/*!
-	 * \brief Set the matching zone index for a sliding interface vertex.
-	 * \param[in] val_matching_zone - Matching zone index for a sliding interface vertex.
-	 */
-  void SetMatching_Zone(short val_matching_zone);
 	
 	/*! 
 	 * \brief Set the periodic point of a vertex.

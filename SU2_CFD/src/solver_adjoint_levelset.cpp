@@ -2,7 +2,7 @@
  * \file solution_adjoint_levelset.cpp
  * \brief Main subrotuines for solving the level set problem.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -97,7 +97,7 @@ CAdjLevelSetSolver::CAdjLevelSetSolver(CGeometry *geometry, CConfig *config, uns
       
       /*--- Initialization of the structure of the whole Jacobian ---*/
       if (rank == MASTER_NODE) cout << "Initialize jacobian structure (Adj. Level Set). MG level: 0." << endl;
-      Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, geometry);
+      Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
       
     }
 	
@@ -133,8 +133,6 @@ CAdjLevelSetSolver::CAdjLevelSetSolver(CGeometry *geometry, CConfig *config, uns
 		
 		if (restart_file.fail()) {
 			cout << "There is no level set restart file!!" << endl;
-			cout << "Press any key to exit..." << endl;
-			cin.get();
 			exit(1);
 		}
     
@@ -592,7 +590,7 @@ void CAdjLevelSetSolver::Source_Residual(CGeometry *geometry, CSolver **solver_c
     /*--- Projected adjoint velocity ---*/
     ProjAdj = 0.0;
     for (iDim = 0; iDim < nDim; iDim++) {
-      Velocity[iDim] = solver_container[FLOW_SOL]->node[iPoint]->GetVelocity(iDim, INCOMPRESSIBLE);
+      Velocity[iDim] = solver_container[FLOW_SOL]->node[iPoint]->GetVelocity(iDim);
       ProjAdj += Velocity[iDim]*AdjLevelSetGradient[0][iDim];
     }
     

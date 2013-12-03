@@ -3,7 +3,7 @@
  * \brief Headers of the main subroutines for creating the sparse matrices-by-blocks.
  *        The subroutines and functions are in the <i>matrix_structure.cpp</i> file.
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 2.0.8
+ * \version 2.0.9
  *
  * Stanford University Unstructured (SU2).
  * Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
@@ -39,7 +39,7 @@ using namespace std;
  * \brief Main class for defining sparse matrices-by-blocks
  with compressed row format.
  * \author A. Bueno, F. Palacios.
- * \version 2.0.8
+ * \version 2.0.9
  */
 class CSysMatrix {
 private:
@@ -80,7 +80,7 @@ public:
    * \param[in] geometry - Geometrical definition of the problem.
 	 * \param[in] config - Definition of the particular problem.
 	 */
-  void Initialize(unsigned long nPoint, unsigned long nPointDomain, unsigned short nVar, unsigned short nEqn, CGeometry *geometry);
+  void Initialize(unsigned long nPoint, unsigned long nPointDomain, unsigned short nVar, unsigned short nEqn, bool EdgeConnect, CGeometry *geometry);
   
   /*!
 	 * \brief Assings values to the sparse-matrix structure.
@@ -105,22 +105,19 @@ public:
 	 */
 	void ScaleVals(double val_scale);
   
-	/*!
+  /*!
 	 * \brief Copies the block (i,j) of the matrix-by-blocks structure in the internal variable *block.
 	 * \param[in] block_i - Indexes of the block in the matrix-by-blocks structure.
 	 * \param[in] block_j - Indexes of the block in the matrix-by-blocks structure.
 	 */
-	void GetBlock(unsigned long block_i, unsigned long block_j);
+	double *GetBlock(unsigned long block_i, unsigned long block_j);
   
-	/*!
-	 * \brief Displays the content of the internal variable <i>*block</i> (for debug purposes).
+  /*!
+	 * \brief Copies the block (i,j) of the matrix-by-blocks structure in the internal variable *block.
+	 * \param[in] block_i - Indexes of the block in the matrix-by-blocks structure.
+	 * \param[in] block_j - Indexes of the block in the matrix-by-blocks structure.
 	 */
-	void DisplayBlock(void);
-  
-	/*!
-	 * \brief Returns the content of the internal variable <i>*block</i> (for debug purposes).
-	 */
-	void ReturnBlock(double **val_block);
+	double GetBlock(unsigned long block_i, unsigned long block_j, unsigned short iVar, unsigned short jVar);
   
   /*!
 	 * \brief Set the value of a block in the sparse matrix.
