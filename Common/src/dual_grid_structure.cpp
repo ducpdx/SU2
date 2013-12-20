@@ -271,11 +271,11 @@ void CPoint::SetPoint(unsigned long val_point) {
 	
 	/*--- Look for the point in the list ---*/
 	new_point = true;
-	for (iPoint = 0; iPoint < GetnPoint(); iPoint++)
+	for (iPoint = 0; iPoint < GetnPoint(); iPoint++) {
 		if (Point[iPoint] == val_point) {
-			new_point = false; 
-			break;
+			new_point = false; break;
 		}
+  }
 
 	/*--- Store the point structure and dimensionalizate edge structure ---*/
 	if (new_point) {

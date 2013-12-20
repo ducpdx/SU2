@@ -173,9 +173,19 @@ void Geometrical_Preprocessing(CGeometry ***geometry, CConfig **config, unsigned
     /*--- Compute elements surrounding points, points surrounding points,
      and elements surrounding elements ---*/
     
-    if (rank == MASTER_NODE) cout << "Setting local point and element connectivity." << endl;
+    if (rank == MASTER_NODE) cout << "Setting point connectivity." << endl;
     geometry[iZone][MESH_0]->SetEsuP();
     geometry[iZone][MESH_0]->SetPsuP();
+    
+    if (rank == MASTER_NODE) cout << "Renumbering using a Reverse Cuthill-McKee Algorithm." << endl;
+    geometry[iZone][MESH_0]->SetRCM(config[iZone]);
+    
+    if (rank == MASTER_NODE) cout << "Recomputing point connectivity." << endl;
+    geometry[iZone][MESH_0]->SetEsuP();
+    geometry[iZone][MESH_0]->SetPsuP();
+    
+    if (rank == MASTER_NODE) cout << "Setting element connectivity." << endl;
+
     geometry[iZone][MESH_0]->SetEsuE();
     
     /*--- Check the orientation before computing geometrical quantities ---*/

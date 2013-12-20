@@ -2878,13 +2878,19 @@ void CPhysicalGeometry::SetEsuP(void) {
   unsigned short iNode;
   
   /*--- Loop over all the elements ---*/
+  
   for(iElem = 0; iElem < nElem; iElem++)
+    
   /*--- Loop over all the nodes of an element ---*/
+    
     for(iNode = 0; iNode < elem[iElem]->GetnNodes(); iNode++) {
       iPoint = elem[iElem]->GetNode(iNode);
+      
       /*--- Store the element into the point ---*/
+      
       node[iPoint]->SetElem(iElem);
     }
+  
 }
 
 void CPhysicalGeometry::ComputeWall_Distance(CConfig *config) {
@@ -3174,6 +3180,144 @@ void CPhysicalGeometry::SetPsuP(void) {
   
 }
 
+void CPhysicalGeometry::SetRCM(CConfig *config) {
+  unsigned long iPoint, AdjPoint, AuxPoint, AddPoint, iElem;
+  vector<unsigned long> Queue, AuxQueue, Result;
+  unsigned short Degree, MinDegree, iNode, jNode, iDim, iMarker;
+  bool *AddIndex, inQueue;
+  
+  AddIndex = new bool [nPoint];
+
+  for(iPoint = 0; iPoint < nPoint; iPoint++)
+    AddIndex[iPoint] = false;
+
+  /*--- Select the node with the lowest degree in the grid. ---*/
+  
+  MinDegree = node[0]->GetnNeighbor(); AddPoint = 0;
+  for(iPoint = 1; iPoint < nPoint; iPoint++) {
+    Degree = node[iPoint]->GetnNeighbor();
+    if ((Degree < MinDegree) && (AddIndex[iPoint] == false)) {
+      MinDegree = Degree;
+      AddPoint = iPoint;
+    }
+  }
+  
+  /*--- Add the node in the first free position. ---*/
+  Result.push_back(AddPoint); AddIndex[AddPoint] = true;
+  
+  /*--- Loop until reorganize all the nodes ---*/
+  
+  while (Result.size() < nPoint) {
+    
+    /*--- Add to the queue all the nodes adjacent in the increasing
+     order of their degree, checking if the element is already 
+     in the Queue. ---*/
+    
+    AuxQueue.clear();
+    for (iNode = 0; iNode < node[AddPoint]->GetnPoint(); iNode++) {
+      AdjPoint = node[AddPoint]->GetPoint(iNode);
+      
+      /*---  ---*/
+      
+      inQueue = false;
+      for (jNode = 0; jNode < Queue.size(); jNode++) {
+        if (Queue[jNode] == AdjPoint) { inQueue = true; break; }
+      }
+      
+      if ((AddIndex[AdjPoint] == false) && (!inQueue)) AuxQueue.push_back(AdjPoint);
+    }
+    
+    for (iNode = 0; iNode < AuxQueue.size(); iNode++) {
+      for (jNode = 0; jNode < AuxQueue.size() - 1 - iNode; jNode++) {
+        if (node[AuxQueue[jNode]]->GetnNeighbor() > node[AuxQueue[jNode+1]]->GetnNeighbor()) {
+          AuxPoint = AuxQueue[jNode];
+          AuxQueue[jNode] = AuxQueue[jNode+1];
+          AuxQueue[jNode+1] = AuxPoint;
+        }
+      }
+    }
+    
+    Queue.insert(Queue.end(), AuxQueue.begin(), AuxQueue.end());
+    
+    /*--- Extract the first node from the queue and add it in the first free 
+     position. ---*/
+    
+    AddPoint = Queue[0];
+    Result.push_back(Queue[0]); AddIndex[Queue[0]] = true;
+    Queue.erase (Queue.begin(),Queue.begin()+1);
+    
+  }
+  
+  delete[] AddIndex;
+  
+  /*--- Print the new array ---*/
+//  vector<unsigned long>::iterator Iter;
+//  sort( Result.begin(), Result.end());
+//  Iter = unique( Result.begin(), Result.end());
+//  Result.resize( Iter - Result.begin() );
+//  cout << "Queue.size(): " << Queue.size() << endl;
+//  cout << "Result.size(): " << Result.size() <<". nPoint: "<<  nPoint << endl;
+//  cin.get();
+  
+  /*--- Reset old data structures ---*/
+  
+  for (iPoint = 0; iPoint < nPoint; iPoint++) {
+    node[iPoint]->ResetElem();
+    node[iPoint]->ResetPoint();
+    node[iPoint]->ResetBoundary();
+    node[iPoint]->SetPhysicalBoundary(false);
+  }
+  
+  /*--- Set the new coordinates ---*/
+  
+  double **AuxCoord;
+ 
+  AuxCoord = new double*[nPoint];
+  for (iPoint = 0; iPoint < nPoint; iPoint++)
+    AuxCoord[iPoint] = new double [nDim];
+  
+  for (iPoint = 0; iPoint < nPoint; iPoint++) {
+    for (iDim = 0; iDim < nDim; iDim++)
+      AuxCoord[iPoint][iDim] = node[iPoint]->GetCoord(iDim);
+  }
+
+  for (iPoint = 0; iPoint < nPoint; iPoint++) {
+    for (iDim = 0; iDim < nDim; iDim++) {
+      node[iPoint]->SetCoord(iDim, AuxCoord[Result[iPoint]][iDim]);
+    }
+  }
+  
+  for (iPoint = 0; iPoint < nPoint; iPoint++)
+    delete[] AuxCoord[iPoint];
+  delete[] AuxCoord;
+
+  /*--- Set the new conectivities ---*/
+  
+  for(iElem = 0; iElem < nElem; iElem++) {
+    for (iNode = 0; iNode < elem[iElem]->GetnNodes(); iNode++) {
+      iPoint = elem[iElem]->GetNode(iNode);
+      elem[iElem]->SetNode(iNode, Result[iPoint]);
+    }
+  }
+  
+  for (iMarker = 0; iMarker < nMarker; iMarker++) {
+    for (iElem = 0; iElem < nElem_Bound[iMarker]; iElem++) {
+      for (iNode = 0; iNode < bound[iMarker][iElem]->GetnNodes(); iNode++) {
+        iPoint = bound[iMarker][iElem]->GetNode(iNode);
+        bound[iMarker][iElem]->SetNode(iNode, Result[iPoint]);
+        node[Result[iPoint]]->SetBoundary(nMarker);
+        if (config->GetMarker_All_Boundary(iMarker) != SEND_RECEIVE &&
+            config->GetMarker_All_Boundary(iMarker) != INTERFACE_BOUNDARY &&
+            config->GetMarker_All_Boundary(iMarker) != NEARFIELD_BOUNDARY &&
+            config->GetMarker_All_Boundary(iMarker) != PERIODIC_BOUNDARY)
+          node[Result[iPoint]]->SetPhysicalBoundary(true);
+      }
+    }
+  }
+  
+
+}
+
 void CPhysicalGeometry::SetEsuE(void) {
   unsigned short first_elem_face, second_elem_face, iFace, iNode, jElem;
   unsigned long face_point, Test_Elem, iElem;
@@ -3242,19 +3386,25 @@ void CPhysicalGeometry::SetVertex(CConfig *config) {
   unsigned short iMarker, iNode;
   
   /*--- Initialize the Vertex vector for each node of the grid ---*/
+  
   for (iPoint = 0; iPoint < nPoint; iPoint++)
     for (iMarker = 0; iMarker < nMarker; iMarker++)
       node[iPoint]->SetVertex(-1,iMarker);
   
   /*--- Create and compute the vector with the number of vertex per marker ---*/
+  
   nVertex = new unsigned long [nMarker];
   for (iMarker = 0; iMarker < nMarker; iMarker++) {
+    
     /*--- Initialize the number of Bound Vertex for each Marker ---*/
+    
     nVertex[iMarker] = 0;
     for (iElem = 0; iElem < nElem_Bound[iMarker]; iElem++)
       for(iNode = 0; iNode < bound[iMarker][iElem]->GetnNodes(); iNode++) {
         iPoint = bound[iMarker][iElem]->GetNode(iNode);
+        
         /*--- Set the vertex in the node information ---*/
+        
         if ((node[iPoint]->GetVertex(iMarker) == -1) || (config->GetMarker_All_Boundary(iMarker) == SEND_RECEIVE)) {
           iVertex = nVertex[iMarker];
           node[iPoint]->SetVertex(nVertex[iMarker],iMarker);
@@ -3264,22 +3414,27 @@ void CPhysicalGeometry::SetVertex(CConfig *config) {
   }
   
   /*--- Initialize the Vertex vector for each node, the previous result is deleted ---*/
+  
   for (iPoint = 0; iPoint < nPoint; iPoint++)
     for (iMarker = 0; iMarker < nMarker; iMarker++)
       node[iPoint]->SetVertex(-1,iMarker);
   
   /*--- Create the bound vertex structure, note that the order
    is the same as in the input file, this is important for Send/Receive part ---*/
+  
   vertex = new CVertex**[nMarker];
   for (iMarker = 0; iMarker < nMarker; iMarker++) {
     vertex[iMarker] = new CVertex* [nVertex[iMarker]];
     nVertex[iMarker] = 0;
     
     /*--- Initialize the number of Bound Vertex for each Marker ---*/
+    
     for (iElem = 0; iElem < nElem_Bound[iMarker]; iElem++)
       for(iNode = 0; iNode < bound[iMarker][iElem]->GetnNodes(); iNode++) {
         iPoint = bound[iMarker][iElem]->GetNode(iNode);
+        
         /*--- Set the vertex in the node information ---*/
+        
         if ((node[iPoint]->GetVertex(iMarker) == -1) || (config->GetMarker_All_Boundary(iMarker) == SEND_RECEIVE)){
           iVertex = nVertex[iMarker];
           vertex[iMarker][iVertex] = new CVertex(iPoint, nDim);
