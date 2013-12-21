@@ -177,12 +177,12 @@ void Geometrical_Preprocessing(CGeometry ***geometry, CConfig **config, unsigned
     geometry[iZone][MESH_0]->SetEsuP();
     geometry[iZone][MESH_0]->SetPsuP();
     
-    if (rank == MASTER_NODE) cout << "Renumbering using a Reverse Cuthill-McKee Algorithm." << endl;
-    geometry[iZone][MESH_0]->SetRCM(config[iZone]);
-    
-    if (rank == MASTER_NODE) cout << "Recomputing point connectivity." << endl;
-    geometry[iZone][MESH_0]->SetEsuP();
-    geometry[iZone][MESH_0]->SetPsuP();
+//    if (rank == MASTER_NODE) cout << "Renumbering using a Reverse Cuthill-McKee Algorithm." << endl;
+//    geometry[iZone][MESH_0]->SetRCM(config[iZone]);
+//    
+//    if (rank == MASTER_NODE) cout << "Recomputing point connectivity." << endl;
+//    geometry[iZone][MESH_0]->SetEsuP();
+//    geometry[iZone][MESH_0]->SetPsuP();
     
     if (rank == MASTER_NODE) cout << "Setting element connectivity." << endl;
 

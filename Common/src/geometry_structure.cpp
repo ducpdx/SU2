@@ -3194,7 +3194,7 @@ void CPhysicalGeometry::SetRCM(CConfig *config) {
   /*--- Select the node with the lowest degree in the grid. ---*/
   
   MinDegree = node[0]->GetnNeighbor(); AddPoint = 0;
-  for(iPoint = 1; iPoint < nPoint; iPoint++) {
+  for(iPoint = 1; iPoint < nPointDomain; iPoint++) {
     Degree = node[iPoint]->GetnPoint();
     if ((Degree < MinDegree) && (AddIndex[iPoint] == false)) {
       MinDegree = Degree;
@@ -3207,7 +3207,7 @@ void CPhysicalGeometry::SetRCM(CConfig *config) {
   
   /*--- Loop until reorganize all the nodes ---*/
   
-  while (Result.size() < nPoint) {
+  while (Result.size() < nPointDomain) {
     
     /*--- Add to the queue all the nodes adjacent in the increasing
      order of their degree, checking if the element is already 
@@ -3222,7 +3222,7 @@ void CPhysicalGeometry::SetRCM(CConfig *config) {
         if (Queue[jNode] == AdjPoint) { inQueue = true; break; }
       }
       
-      if ((AddIndex[AdjPoint] == false) && (!inQueue))
+      if ((AddIndex[AdjPoint] == false) && (!inQueue) && (AdjPoint < nPointDomain))
         
         AuxQueue.push_back(AdjPoint);
     }
@@ -3252,9 +3252,14 @@ void CPhysicalGeometry::SetRCM(CConfig *config) {
     
   }
   
+  delete[] AddIndex;
+  
   reverse(Result.begin(), Result.end());
   
-  delete[] AddIndex;
+  /*--- Add the MPI points ---*/
+  for(iPoint = nPointDomain; iPoint < nPoint; iPoint++) {
+    Result.push_back(iPoint);
+  }
   
   /*--- Reset old data structures ---*/
   
