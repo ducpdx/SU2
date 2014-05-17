@@ -2,7 +2,7 @@
  * \file option_structure.hpp
  * \brief Defines classes for referencing options for easy input in CConfig
  * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 3.0.0 "eagle"
+ * \version 3.1.0 "eagle"
  *
  * Many of the classes in this file are templated, and therefore must
  * be declared and defined here; to keep all elements together, there
@@ -593,6 +593,10 @@ enum BC_TYPE {
   ISOTHERMAL = 28,      /*!< \brief No slip isothermal wall boundary condition. */
   HEAT_FLUX  = 29,      /*!< \brief No slip constant heat flux wall boundary condition. */
   PRESSURE_BOUNDARY = 30,   	/*!< \brief Pressure boundary condition. */
+  HEAT_FLUX_NONCATALYTIC = 31, /*!< \brief No-slip, constant heat flux, noncatalytic bc. */
+  HEAT_FLUX_CATALYTIC= 32, /*!< \brief No-slip, constant heat flux, catalytic bc. */
+  ISOTHERMAL_NONCATALYTIC = 33, /*!< \brief No-slip, constant temperature, noncatalytic bc. */
+  ISOTHERMAL_CATALYTIC = 34, /*!< \brief No-slip, constant temperature, catalytic bc. */
 	SEND_RECEIVE = 99		/*!< \brief Boundary send-receive definition. */
 };
 
@@ -2079,6 +2083,7 @@ public:
 		} else {
 			cerr << "Error in CConvOptionRef::SetValue(): "
 					<< value[0] << " is an invalid space discretization" << endl;
+      cerr << "Please, check that the config file is compatible with SU2 3.1.0 \"eagle\"" << endl;
 			throw(-1);
 		}
 	}
