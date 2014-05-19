@@ -546,7 +546,17 @@ public:
 	 */
 	virtual void BC_NearField_Boundary(CGeometry *geometry, CSolver **solver_container, CNumerics *numerics, CConfig *config,
                                        unsigned short val_marker);
-    
+  
+  /*!
+	 * \brief A virtual member.
+	 * \param[in] geometry - Geometrical definition of the problem.
+	 * \param[in] solver_container - Container vector with all the solutions.
+	 * \param[in] solver - Description of the numerical method.
+	 * \param[in] config - Definition of the particular problem.
+	 * \param[in] val_marker - Surface marker where the boundary condition is applied.
+	 */
+	virtual void BC_ActDisk_Boundary(CGeometry *geometry, CSolver **solver_container, CNumerics *numerics, CConfig *config);
+  
 	/*!
 	 * \brief A virtual member.
 	 * \param[in] geometry - Geometrical definition of the problem.
@@ -1650,6 +1660,47 @@ public:
   virtual void SetOneD_T(double AverageTemperature);
 
   /*!
+     * \brief A virtual member.
+   * \ Get the flux averaged pressure at a marker.(same as area averaged pressure)
+     */
+  virtual double GetOneD_fluxavgP(void);
+  /*!
+     * \brief A virtual member.
+   * \ Set the flux averaged pressure at a marker. (same as area averaged pressure)
+     */
+  virtual void SetOneD_fluxavgP(double PressureRef);
+  /*!
+     * \brief A virtual member.
+   * \ Get the flux averaged density at a marker. ( = (gamma/(gamma-1)) / ( Pref*(href-1/2 uref^2) )
+     */
+  virtual double GetOneD_fluxavgRho(void);
+  /*!
+     * \brief A virtual member.
+   * \ Set the flux averaged density at a marker.( = (gamma/(gamma-1)) / ( Pref*(href-1/2 uref^2) )
+     */
+  virtual void SetOneD_fluxavgRho(double DensityRef);
+  /*!
+     * \brief A virtual member.
+   * \ Get the flux averaged velocity at a marker. = sqrt ( \int((rho*u)*u^2dA)/\int(rho*u*dA) )
+     */
+  virtual double GetOneD_fluxavgU(void);
+  /*!
+     * \brief A virtual member.
+   * \ Set the flux averaged velocity at a marker. = sqrt ( \int((rho*u)*u^2dA)/\int(rho*u*dA) )
+     */
+  virtual void SetOneD_fluxavgU(double VelocityRef);
+  /*!
+     * \brief A virtual member.
+   * \ Get the flux averaged enthalpy at a marker. = \int(rho*u*h dA) / \int(rho *u *dA )
+     */
+  virtual double GetOneD_fluxavgH(void);
+  /*!
+     * \brief A virtual member.
+   * \ Set the flux averaged enthalpy at a marker. = \int(rho*u*h dA) / \int(rho *u *dA )
+     */
+  virtual void SetOneD_fluxavgH(double EnthalpyRef);
+
+  /*!
 	 * \brief A virtual member.
 	 * \param[in] geometry - Geometrical definition of the problem.
 	 * \param[in] config - Definition of the particular problem.
@@ -1734,7 +1785,18 @@ public:
   * \param[in] solution - Container vector with all the solutions.
   */
 	virtual void GetNacelle_Properties(CGeometry *geometry, CConfig *config, unsigned short iMesh, bool Output);
-    
+  
+  /*!
+   * \brief A virtual member.
+	 * \param[in] geometry - Geometrical definition of the problem.
+	 * \param[in] solver_container - Container vector with all the solutions.
+	 * \param[in] config - Definition of the particular problem.
+	 * \param[in] iMesh - current mesh level for the multigrid.
+   * \param[in] Output - boolean to determine whether to print output.
+	 */
+  virtual void SetFarfield_AoA(CGeometry *geometry, CSolver **solver_container,
+                               CConfig *config, unsigned short iMesh, bool Output);
+  
   /*!
   * \brief Prepares and solves the aeroelastic equations.
   * \param[in] surface_movement - Surface movement classes of the problem.
@@ -1889,6 +1951,10 @@ protected:
   OneD_Pt, /*!< \brief average total pressure evaluated at an exit */
   OneD_M, /*!< \brief area average Mach evaluated at an exit */
   OneD_T, /*!< \brief area average Temperature evaluated at an exit */
+  OneD_PressureRef, /*!< \brief area average Pressure evaluated at an exit */
+  OneD_DensityRef, /*!< \brief flux average density evaluated at an exit */
+  OneD_EnthalpyRef, /*!< \brief flux average enthalpy evaluated at an exit */
+  OneD_VelocityRef, /*!< \brief flux average velocity evaluated at an exit */
   Total_CDrag, /*!< \brief Total drag coefficient for all the boundaries. */
 	Total_CLift,		/*!< \brief Total lift coefficient for all the boundaries. */
 	Total_CSideForce,		/*!< \brief Total sideforce coefficient for all the boundaries. */
@@ -1929,6 +1995,14 @@ protected:
   double *Primitive,		/*!< \brief Auxiliary nPrimVar vector. */
 	*Primitive_i,				/*!< \brief Auxiliary nPrimVar vector for storing the primitive at point i. */
 	*Primitive_j;				/*!< \brief Auxiliary nPrimVar vector for storing the primitive at point j. */
+  
+  double Cauchy_Value,	/*!< \brief Summed value of the convergence indicator. */
+	Cauchy_Func;			/*!< \brief Current value of the convergence indicator at one iteration. */
+	unsigned short Cauchy_Counter;	/*!< \brief Number of elements of the Cauchy serial. */
+	double *Cauchy_Serie;			/*!< \brief Complete Cauchy serial. */
+	double Old_Func,	/*!< \brief Old value of the objective function (the function which is monitored). */
+	New_Func;			/*!< \brief Current value of the objective function (the function which is monitored). */
+  double AoA_old;  /*!< \brief Old value of the angle of attack (monitored). */
   
 public:
     
@@ -2248,7 +2322,18 @@ public:
 	 */
 	void BC_NearField_Boundary(CGeometry *geometry, CSolver **solver_container, CNumerics *numerics,
                                CConfig *config, unsigned short val_marker);
-    
+  
+  /*!
+	 * \brief Impose the actuator disk boundary condition using the residual.
+	 * \param[in] geometry - Geometrical definition of the problem.
+	 * \param[in] solver_container - Container vector with all the solutions.
+	 * \param[in] solver - Description of the numerical method.
+	 * \param[in] config - Definition of the particular problem.
+	 * \param[in] val_marker - Surface marker where the boundary condition is applied.
+	 */
+	void BC_ActDisk_Boundary(CGeometry *geometry, CSolver **solver_container, CNumerics *numerics,
+                                 CConfig *config);
+  
 	/*!
 	 * \brief Impose the dirichlet boundary condition using the residual.
 	 * \param[in] geometry - Geometrical definition of the problem.
@@ -2342,7 +2427,18 @@ public:
 	 * \param[in] solution - Container vector with all the solutions.
 	 */
 	void GetNacelle_Properties(CGeometry *geometry, CConfig *config, unsigned short iMesh, bool Output);
-    
+  
+  /*!
+	 * \brief Update the AoA and freestream velocity at the farfield.
+	 * \param[in] geometry - Geometrical definition of the problem.
+	 * \param[in] solver_container - Container vector with all the solutions.
+	 * \param[in] config - Definition of the particular problem.
+	 * \param[in] iMesh - current mesh level for the multigrid.
+   * \param[in] Output - boolean to determine whether to print output.
+	 */
+  void SetFarfield_AoA(CGeometry *geometry, CSolver **solver_container,
+                                     CConfig *config, unsigned short iMesh, bool Output);
+  
 	/*!
 	 * \brief Update the solution using the explicit Euler scheme.
 	 * \param[in] geometry - Geometrical definition of the problem.
@@ -2733,10 +2829,42 @@ public:
   double GetOneD_T(void);
 
   /*!
-     * \brief Set the averaged Temperature number at a marker.
+     * \brief Set the averaged Temperature at a marker.
      */
   void SetOneD_T(double AverageTemperature);
 
+  /*!
+     * \brief Get the flux averaged pressure at a marker.(same as area averaged pressure)
+     */
+  double GetOneD_fluxavgP(void);
+  /*!
+     * \brief Set the flux averaged pressure at a marker. (same as area averaged pressure)
+     */
+  void SetOneD_fluxavgP(double PressureRef);
+  /*!
+     * \brief Get the flux averaged density at a marker. ( = (gamma/(gamma-1)) / ( Pref*(href-1/2 uref^2) )
+     */
+  double GetOneD_fluxavgRho(void);
+  /*!
+     * \brief Set the flux averaged density at a marker.( = (gamma/(gamma-1)) / ( Pref*(href-1/2 uref^2) )
+     */
+  void SetOneD_fluxavgRho(double DensityRef);
+  /*!
+     * \brief Get the flux averaged velocity at a marker. = sqrt ( \int((rho*u)*u^2dA)/\int(rho*u*dA) )
+     */
+  double GetOneD_fluxavgU(void);
+  /*!
+     * \brief Set the flux averaged velocity at a marker. = sqrt ( \int((rho*u)*u^2dA)/\int(rho*u*dA) )
+     */
+  void SetOneD_fluxavgU(double VelocityRef);
+  /*!
+     * \brief Get the flux averaged enthalpy at a marker. = \int(rho*u*h dA) / \int(rho *u *dA )
+     */
+  double GetOneD_fluxavgH(void);
+  /*!
+     * \brief Set the flux averaged enthalpy at a marker. = \int(rho*u*h dA) / \int(rho *u *dA )
+     */
+  void SetOneD_fluxavgH(double EnthalpyRef);
 
 	/*!
 	 * \brief Set the total residual adding the term that comes from the Dual Time Strategy.

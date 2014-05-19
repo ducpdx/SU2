@@ -156,6 +156,8 @@ inline void CGeometry::VisualizeControlVolume(CConfig *config, unsigned short ac
 
 inline void CGeometry::MatchNearField(CConfig *config) { }
 
+inline void CGeometry::MatchActuator_Disk(CConfig *config) { }
+
 inline void CGeometry::MatchInterface(CConfig *config) { }
 
 inline void CGeometry::MatchZone(CConfig *config, CGeometry *geometry_donor, CConfig *config_donor, unsigned short val_iZone, unsigned short val_nZone) { }
@@ -185,6 +187,8 @@ inline double CGeometry::Compute_Chord(double *Plane_P0, double *Plane_Normal, u
 inline double CGeometry::Compute_Thickness(double *Plane_P0, double *Plane_Normal, unsigned short iSection, double Location, CConfig *config, vector<double> &Xcoord_Airfoil, vector<double> &Ycoord_Airfoil, vector<double> &Zcoord_Airfoil, bool original_surface) { return 0; }
 
 inline double CGeometry::Compute_Area(double *Plane_P0, double *Plane_Normal, unsigned short iSection, CConfig *config, vector<double> &Xcoord_Airfoil, vector<double> &Ycoord_Airfoil, vector<double> &Zcoord_Airfoil, bool original_surface) { return 0; }
+
+inline double CGeometry::Compute_Volume(CConfig *config, bool original_surface) { return 0; }
 
 inline void CGeometry::FindNormal_Neighbor(CConfig *config) { }
 
