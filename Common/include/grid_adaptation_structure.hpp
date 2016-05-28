@@ -1,13 +1,20 @@
 /*!
  * \file grid_adaptation_structure.hpp
  * \brief Headers of the main subroutines for doing the numerical grid
- *        movement (including volumetric movement, surface movement and Free From
- *        technique definition). The subroutines and functions are in
- *        the <i>grid_movement_structure.cpp</i> file.
- * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 3.1.0 "eagle"
+ *        adaptation.
+ * \author F. Palacios
+ * \version 4.1.3 "Cardinal"
  *
- * SU2, Copyright (C) 2012-2014 Aerospace Design Laboratory (ADL).
+ * SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+ *                      Dr. Thomas D. Economon (economon@stanford.edu).
+ *
+ * SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+ *                 Prof. Piero Colonna's group at Delft University of Technology.
+ *                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+ *                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+ *                 Prof. Rafael Palacios' group at Imperial College London.
+ *
+ * Copyright (C) 2012-2016 SU2, the open-source CFD code.
  *
  * SU2 is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,6 +32,8 @@
 
 #pragma once
 
+#include "./mpi_structure.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <cstdlib>
@@ -38,7 +47,7 @@ using namespace std;
 /*!
  * \class CGridAdaptation
  * \brief Parent class for defining the grid adaptation.
- * \author F. Palacios.
+ * \author F. Palacios
  * \version 2.0.7
  */
 class CGridAdaptation {
@@ -47,19 +56,19 @@ protected:
 	nElem_new;					/*!< \brief Number of new elements. */
 	unsigned short nDim,	/*!< \brief Number of dimensions of the problem. */
 	nVar;					/*!< \brief Number of variables in the problem. */
-	double **ConsVar_Sol,	/*!< \brief Conservative variables (original solution). */
+	su2double **ConsVar_Sol,	/*!< \brief Conservative variables (original solution). */
 	**ConsVar_Res,			/*!< \brief Conservative variables (residual). */
 	**ConsVar_Adapt;		/*!< \brief Conservative variables (adapted solution). */
-	double **AdjVar_Sol,	/*!< \brief Adjoint variables (original solution). */
+	su2double **AdjVar_Sol,	/*!< \brief Adjoint variables (original solution). */
 	**AdjVar_Res,			/*!< \brief Adjoint variables (residual). */
 	**AdjVar_Adapt;			/*!< \brief Adjoint variables (adapted solution). */
-	double **LinVar_Sol,	/*!< \brief Linear variables (original solution). */
+	su2double **LinVar_Sol,	/*!< \brief Linear variables (original solution). */
 	**LinVar_Res,			/*!< \brief Linear variables (residual). */
 	**LinVar_Adapt;			/*!< \brief Linear variables (adapted solution). */
-	double **Gradient,		/*!< \brief Gradient value. */
+	su2double **Gradient,		/*!< \brief Gradient value. */
 	**Gradient_Flow,		/*!< \brief Gradient of the flow variables. */
 	**Gradient_Adj;			/*!< \brief Fradient of the adjoint variables. */
-	double *Index;			/*!< \brief Adaptation index (indicates the value of the adaptation). */
+	su2double *Index;			/*!< \brief Adaptation index (indicates the value of the adaptation). */
 	
 public:
 
@@ -104,20 +113,6 @@ public:
 	void GetAdjResidual(CGeometry *geometry, CConfig *config);
 	
 	/*! 
-	 * \brief Read the flow solution from the restart file.
-	 * \param[in] geometry - Geometrical definition of the problem.
-	 * \param[in] config - Definition of the particular problem.
-	 */	
-	void GetLinSolution(CGeometry *geometry, CConfig *config);
-	
-	/*! 
-	 * \brief Read the flow solution from the restart file.
-	 * \param[in] geometry - Geometrical definition of the problem.
-	 * \param[in] config - Definition of the particular problem.
-	 */	
-	void GetLinResidual(CGeometry *geometry, CConfig *config);
-	
-	/*! 
 	 * \brief Do a complete adaptation of the computational grid.
 	 * \param[in] geometry - Geometrical definition of the problem.
 	 * \param[in] strength - Adaptation Strength.	 
@@ -137,13 +132,6 @@ public:
 	 * \param[in] strength - Adaptation Strength.	 
 	 */		
 	void SetWake_Refinement(CGeometry *geometry, unsigned short strength);
-	
-	/*! 
-	 * \brief Do an adaptation of the computational grid on the two phase problem interphase.
-	 * \param[in] geometry - Geometrical definition of the problem.
-	 * \param[in] strength - Adaptation Strength.	 
-	 */		
-	void SetTwoPhase_Refinement(CGeometry *geometry, unsigned short strength);
 	
 	/*! 
 	 * \brief Do an adaptation of the computational grid on the supersonic shock region.
@@ -180,42 +168,42 @@ public:
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckTriangleCode(bool *AdaptCode);
+	long CheckTriangleCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Find the adaptation code for each element in the fine grid.
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckRectCode(bool *AdaptCode);
+	long CheckRectCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Find the adaptation code for each element in the fine grid.
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckRectExtCode(bool *AdaptCode);
+	long CheckRectExtCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Find the adaptation code for each element in the fine grid.
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckTetraCode(bool *AdaptCode);
+	long CheckTetraCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Find the adaptation code for each element in the fine grid.
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckHexaCode(bool *AdaptCode);
+	long CheckHexaCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Find the adaptation code for each element in the fine grid.
 	 * \param[in] AdaptCode - Edge combination to stablish the right elemeent division.
 	 * \return Adaptation code for the element.
 	 */	
-	int CheckPyramCode(bool *AdaptCode);
+	long CheckPyramCode(bool *AdaptCode);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -225,7 +213,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void TriangleDivision(int code, int *nodes, int *edges, int **Division, int *nPart);
+	void TriangleDivision(long code, long *nodes, long *edges, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -235,7 +223,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void RectDivision(int code, int *nodes, int **Division, int *nPart);
+	void RectDivision(long code, long *nodes, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -245,7 +233,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void RectExtDivision(int code, int *nodes, int **Division, int *nPart);
+	void RectExtDivision(long code, long *nodes, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -255,7 +243,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void TetraDivision(int code, int *nodes, int *edges, int **Division, int *nPart);
+	void TetraDivision(long code, long *nodes, long *edges, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -265,7 +253,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void HexaDivision(int code, int *nodes, int **Division, int *nPart);
+	void HexaDivision(long code, long *nodes, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Division pattern of the element.
@@ -275,7 +263,7 @@ public:
 	 * \param[out] Division - Division pattern. 
 	 * \param[out] nPart - Number of new elements after the division. 
 	 */	
-	void PyramDivision(int code, int *nodes, int **Division, int *nPart);
+	void PyramDivision(long code, long *nodes, long **Division, long *nPart);
 	
 	/*! 
 	 * \brief Do a complete adaptation of the computational grid.
@@ -349,13 +337,7 @@ public:
 	 * \param[in] max_elem - _________________________.
 	 */	
 	void SetSensorElem(CGeometry *geometry, CConfig *config, unsigned long max_elem);
-	
-	/*! 
-	 * \brief Read the flow solution from the restart file.
-	 * \param[in] geometry - Geometrical definition of the problem.
-	 * \param[in] mesh_filename - _________________________.
-	 */	
-	void WriteAdaptSensor(CGeometry *geometry, char mesh_filename[200]);
+
 };
 
 #include "grid_adaptation_structure.inl"

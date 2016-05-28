@@ -2,10 +2,19 @@
 
 ## \file compute_stability.py
 #  \brief Python script for performing the shape optimization.
-#  \author Francisco Palacios, Trent Lukaczyk, Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 3.1.0 "eagle"
+#  \author T. Lukaczyk, F. Palacios
+#  \version 4.1.3 "Cardinal"
 #
-# SU2, Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
+# SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+#                      Dr. Thomas D. Economon (economon@stanford.edu).
+#
+# SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+#                 Prof. Piero Colonna's group at Delft University of Technology.
+#                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+#                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+#                 Prof. Rafael Palacios' group at Imperial College London.
+#
+# Copyright (C) 2012-2016 SU2, the open-source CFD code.
 #
 # SU2 is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -30,7 +39,7 @@ import SU2
 parser = OptionParser()
 parser.add_option("-f", "--file", dest="filename",
                   help="read config from FILE", metavar="FILE")
-parser.add_option("-p", "--partitions", dest="partitions", default=2,
+parser.add_option("-n", "--partitions", dest="partitions", default=2,
                   help="number of PARTITIONS", metavar="PARTITIONS")
 parser.add_option("-i", "--iterations", dest="iterations", default=99999,
                   help="number of ITERATIONS", metavar="ITERATIONS")
@@ -54,7 +63,7 @@ state.find_files(config)
 drag_alpha = SU2.eval.func('D_DRAG_D_ALPHA',config,state)
 moment_y_alpha= SU2.eval.func('D_MOMENT_Z_D_ALPHA',config,state)
 
-grad_moment_y_alpha= SU2.eval.grad('D_MOMENT_Z_D_ALPHA','ADJOINT',config,state)
+grad_moment_y_alpha= SU2.eval.grad('D_MOMENT_Z_D_ALPHA','CONTINUOUS_ADJOINT',config,state)
 
 print 'D_DRAG_D_ALPHA     =' , drag_alpha
 print 'D_MOMENT_Y_D_ALPHA =' , moment_y_alpha

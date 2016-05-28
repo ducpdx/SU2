@@ -1,11 +1,20 @@
 #!/usr/bin/env python 
 
 ## \file mesh_deformation.py
-#  \brief Python script for doing the parallel deformation using SU2_MDC.
-#  \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 3.1.0 "eagle"
+#  \brief Python script for doing the parallel deformation using SU2_DEF.
+#  \author F. Palacios
+#  \version 4.1.3 "Cardinal"
 #
-# SU2, Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
+# SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+#                      Dr. Thomas D. Economon (economon@stanford.edu).
+#
+# SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+#                 Prof. Piero Colonna's group at Delft University of Technology.
+#                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+#                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+#                 Prof. Rafael Palacios' group at Imperial College London.
+#
+# Copyright (C) 2012-2016 SU2, the open-source CFD code.
 #
 # SU2 is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -35,23 +44,15 @@ def main():
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filename",
                       help="read config from FILE", metavar="FILE")
-    parser.add_option("-p", "--partitions", dest="partitions", default=2,
+    parser.add_option("-n", "--partitions", dest="partitions", default=2,
                       help="number of PARTITIONS", metavar="PARTITIONS")
-    parser.add_option("-d", "--divide_grid", dest="divide_grid", default="True",
-                      help="DIVIDE_GRID the numerical grid", metavar="DIVIDE_GRID")
-    parser.add_option("-m", "--merge_grid",     dest="merge_grid",     default="True",
-                      help="MERGE_GRID the deformed grid", metavar="MERGE_GRID")
 
     (options, args)=parser.parse_args()
     options.partitions = int( options.partitions )
-    options.divide_grid = options.divide_grid.upper() == 'TRUE'
-    options.merge_grid  = options.merge_grid.upper()  == 'TRUE'
     
     # Run Parallel Comutation
     mesh_deformation ( options.filename    ,
-                       options.partitions  , 
-                       options.divide_grid ,
-                       options.merge_grid   )
+                       options.partitions   )
 #: def main()
 
   
@@ -60,22 +61,20 @@ def main():
 # -------------------------------------------------------------------
 
 def mesh_deformation( filename           ,
-                      partitions  = 2    , 
-                      divide_grid = True ,
-                      merge_grid  = True  ):
+                      partitions  = 2     ):
     
     # Config
     config = SU2.io.Config(filename)
     config.NUMBER_PART = partitions
-    config.DECOMPOSED  = not divide_grid
     config.DV_VALUE_NEW = config.DV_VALUE
     
     # State
     state = SU2.io.State()
-    state.FILES.MESH = config.MESH_FILENAME
     
+    state.FILES.MESH = config.MESH_FILENAME
+
     # Deformation
-    info = SU2.run.MDC(config)
+    info = SU2.run.DEF(config)
     state.update(info)
     
     return state

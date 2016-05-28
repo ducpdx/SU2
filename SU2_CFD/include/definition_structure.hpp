@@ -2,10 +2,19 @@
  * \file definition_structure.hpp
  * \brief Headers of the main subroutines used by SU2_CFD.
  *        The subroutines and functions are in the <i>definition_structure.cpp</i> file.
- * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 3.1.0 "eagle"
+ * \author F. Palacios, T. Economon
+ * \version 4.1.3 "Cardinal"
  *
- * SU2, Copyright (C) 2012-2014 Aerospace Design Laboratory (ADL).
+ * SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+ *                      Dr. Thomas D. Economon (economon@stanford.edu).
+ *
+ * SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+ *                 Prof. Piero Colonna's group at Delft University of Technology.
+ *                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+ *                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+ *                 Prof. Rafael Palacios' group at Imperial College London.
+ *
+ * Copyright (C) 2012-2016 SU2, the open-source CFD code.
  *
  * SU2 is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,17 +32,24 @@
 
 #pragma once
 
-#ifndef NO_MPI
-#include <mpi.h>
-#endif
+#include "../../Common/include/mpi_structure.hpp"
+
 #include <ctime>
 
+#include "../../Common/include/gauss_structure.hpp"
+#include "../../Common/include/element_structure.hpp"
+#include "driver_structure.hpp"
+#include "iteration_structure.hpp"
 #include "solver_structure.hpp"
 #include "integration_structure.hpp"
 #include "output_structure.hpp"
 #include "numerics_structure.hpp"
+#include "transfer_structure.hpp"
 #include "../../Common/include/geometry_structure.hpp"
 #include "../../Common/include/config_structure.hpp"
+#include "../../Common/include/interpolation_structure.hpp"
+
+
 
 using namespace std;
 
@@ -54,34 +70,24 @@ unsigned short GetnZone(string val_mesh_filename, unsigned short val_format, CCo
  */
 unsigned short GetnDim(string val_mesh_filename, unsigned short val_format);
 
-
-/*! 
- * \brief Definition and allocation of all solution classes.
- * \param[in] solver_container - Container vector with all the solutions.
- * \param[in] geometry - Geometrical definition of the problem.
+/*!
+ * \brief Definition of the driver class for single and multi-zone problems.
+ * \param[in] driver - Pointer to the driver object to be instantiated.
  * \param[in] config - Definition of the particular problem.
- * \param[in] iZone - Index of the zone.
+ * \param[in] nZone - Total number of zones in the problem.
  */
-void Solver_Preprocessing(CSolver ***solver_container, CGeometry **geometry, CConfig *config, unsigned short iZone);
+void Driver_Preprocessing(CDriver **driver,
+    CIteration **iteration_container,
+    CSolver ****solver_container,
+    CGeometry ***geometry_container,
+    CIntegration ***integration_container,
+    CNumerics *****numerics_container,
+    CInterpolator ***interpolator_container,
+    CTransfer ***transfer_container,
+    CConfig **config,
+    unsigned short val_nZone,
+    unsigned short val_nDim);
 
-/*! 
- * \brief Definition and allocation of all integration classes.
- * \param[in] integration_container - Container vector with all the integration methods.
- * \param[in] geometry - Geometrical definition of the problem.
- * \param[in] config - Definition of the particular problem.
- * \param[in] iZone - Index of the zone.
- */
-void Integration_Preprocessing(CIntegration **integration_container, CGeometry **geometry, CConfig *config, unsigned short iZone);
-
-/*! 
- * \brief Definition and allocation of all solver classes.
- * \param[in] numerics_container - Description of the numerical method (the way in which the equations are solved).
- * \param[in] solver_container - Container vector with all the solutions.
- * \param[in] geometry - Geometrical definition of the problem.
- * \param[in] config - Definition of the particular problem.
- * \param[in] iZone - Index of the zone.
- */
-void Numerics_Preprocessing(CNumerics ****numerics_container, CSolver ***solver_container, CGeometry **geometry, CConfig *config, unsigned short iZone);
 
 /*! 
  * \brief Do the geometrical preprocessing.
@@ -90,3 +96,10 @@ void Numerics_Preprocessing(CNumerics ****numerics_container, CSolver ***solver_
  * \param[in] val_nZone - Total number of zones.
  */
 void Geometrical_Preprocessing(CGeometry ***geometry, CConfig **config, unsigned short val_nZone);
+
+/*!
+ * \brief Performs an analysis of the mesh partitions for distributed memory calculations.
+ * \param[in] geometry - Geometrical definition of the problem.
+ * \param[in] config - Definition of the particular problem.
+ */
+void Partition_Analysis(CGeometry *geometry, CConfig *config);

@@ -13,6 +13,11 @@ AC_DEFUN([CONFIGURE_METIS],
 		 esac],
 		 [enablemetis=yes])
 
+  # Trump --enable-parmetis with --disable-mpi
+  if (test "x$enablempi" = xno); then
+    enablemetis=no
+  fi
+
   # The METIS API is distributed with SU2, so we don't have to guess
   # where it might be installed...
   if (test $enablemetis = yes); then
@@ -26,13 +31,13 @@ AC_DEFUN([CONFIGURE_METIS],
                  [SU2_METIS_CPPFLAGS="-D_FILE_OFFSET_BITS=64 -DNDEBUG -DNDEBUG2 -DHAVE_EXECINFO_H -DHAVE_GETLINE"])
 
 
-     METIS_INCLUDE="-DMETIS_5 -I\$(top_srcdir)/externals/metis/include"
+     METIS_INCLUDE="-I\$(top_srcdir)/externals/metis/include"
      METIS_LIB="\$(top_builddir)/externals/metis/libmetis.a"
      AC_DEFINE(HAVE_METIS, 1, [Flag indicating whether the library will be compiled with Metis support])
      AC_MSG_RESULT(<<< Configuring library with Metis support >>>)
 
      # look for thread-local storage
-     AX_TLS
+     #AX_TLS
  else
      METIS_INCLUDE=""
      METIS_LIB=""

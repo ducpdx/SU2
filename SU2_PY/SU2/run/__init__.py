@@ -3,16 +3,13 @@
 from interface import  \
     build_command     ,\
     run_command       ,\
-    DDC               ,\
     CFD               ,\
-    MAC               ,\
-    MDC               ,\
-    GPC               ,\
-    SMC               ,\
-    PBC               ,\
-    SOL               ;
+    MSH               ,\
+    DEF               ,\
+    DOT               ,\
+    SOL               ,\
+    SOL_FSI           ;
 
-from decompose  import decompose
 from direct     import direct
 from adjoint    import adjoint
 from projection import projection

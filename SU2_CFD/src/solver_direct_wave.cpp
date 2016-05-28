@@ -1,10 +1,19 @@
 /*!
  * \file solution_direct_wave.cpp
  * \brief Main subrotuines for solving the wave equation.
- * \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
- * \version 3.1.0 "eagle"
+ * \author T. Economon, F. Palacios
+ * \version 4.1.3 "Cardinal"
  *
- * SU2, Copyright (C) 2012-2014 Aerospace Design Laboratory (ADL).
+ * SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+ *                      Dr. Thomas D. Economon (economon@stanford.edu).
+ *
+ * SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+ *                 Prof. Piero Colonna's group at Delft University of Technology.
+ *                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+ *                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+ *                 Prof. Rafael Palacios' group at Imperial College London.
+ *
+ * Copyright (C) 2012-2016 SU2, the open-source CFD code.
  *
  * SU2 is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,47 +35,51 @@ CWaveSolver::CWaveSolver(void) : CSolver() { }
 
 CWaveSolver::CWaveSolver(CGeometry *geometry, 
                              CConfig *config) : CSolver() {
-	unsigned short nMarker, iVar, nLineLets;
+	unsigned short iDim, iVar, nLineLets;
   
   int rank = MASTER_NODE;
-#ifndef NO_MPI
-#ifdef WINDOWS
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#else
-  rank = MPI::COMM_WORLD.Get_rank();
-#endif
+#ifdef HAVE_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
   
   nPoint = geometry->GetnPoint();
   nPointDomain = geometry->GetnPointDomain();
 	nDim    = geometry->GetnDim();
-	nMarker = config->GetnMarker_All(); 
 	node    = new CVariable*[nPoint];
 	nVar    = 2; // solve as a 2 eq. system		
   
-	Residual     = new double[nVar]; Residual_RMS = new double[nVar];
-	Solution     = new double[nVar];
-  Res_Sour     = new double[nVar];
-  Residual_Max = new double[nVar]; Point_Max = new unsigned long[nVar];
+	Residual     = new su2double[nVar]; Residual_RMS = new su2double[nVar];
+	Solution     = new su2double[nVar];
+  Res_Sour     = new su2double[nVar];
+  Residual_Max = new su2double[nVar];
   
-
-	/*--- Point to point stiffness matrix (only for triangles)---*/	
-	StiffMatrix_Elem = new double*[nDim+1];
+  /*--- Define some structures for locating max residuals ---*/
+  Point_Max = new unsigned long[nVar];
+  for (iVar = 0; iVar < nVar; iVar++) Point_Max[iVar] = 0;
+  Point_Max_Coord = new su2double*[nVar];
+  for (iVar = 0; iVar < nVar; iVar++) {
+    Point_Max_Coord[iVar] = new su2double[nDim];
+    for (iDim = 0; iDim < nDim; iDim++) Point_Max_Coord[iVar][iDim] = 0.0;
+  }
+  
+	/*--- Point to point stiffness matrix (only for triangles)---*/
+	StiffMatrix_Elem = new su2double*[nDim+1];
 	for (iVar = 0; iVar < nDim+1; iVar++) {
-		StiffMatrix_Elem[iVar] = new double [nDim+1];
+		StiffMatrix_Elem[iVar] = new su2double [nDim+1];
 	}
   
-	StiffMatrix_Node = new double*[nVar];
+	StiffMatrix_Node = new su2double*[nVar];
 	for (iVar = 0; iVar < nVar; iVar++) {
-		StiffMatrix_Node[iVar] = new double [nVar];
+		StiffMatrix_Node[iVar] = new su2double [nVar];
 	}
   
 	/*--- Initialization of matrix structures ---*/
-	StiffMatrixSpace.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
-	StiffMatrixTime.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
-	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry);
+	StiffMatrixSpace.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry, config);
+	StiffMatrixTime.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry, config);
+	Jacobian.Initialize(nPoint, nPointDomain, nVar, nVar, true, geometry, config);
   
-  if (config->GetKind_Linear_Solver_Prec() == LINELET) {
+  if ((config->GetKind_Linear_Solver_Prec() == LINELET) ||
+      (config->GetKind_Linear_Solver() == SMOOTHER_LINELET)) {
     nLineLets = Jacobian.BuildLineletPreconditioner(geometry, config);
     if (rank == MASTER_NODE) cout << "Compute linelet structure. " << nLineLets << " elements in each line (average)." << endl;
   }
@@ -77,7 +90,7 @@ CWaveSolver::CWaveSolver(CGeometry *geometry,
   
   /* Wave strength coefficient for all of the markers */
   
-  CWave = new double[config->GetnMarker_All()];
+  CWave = new su2double[config->GetnMarker_All()];
   Total_CWave = 0.0;
   
   /* Check for a restart (not really used), initialize from zero otherwise */
@@ -85,30 +98,7 @@ CWaveSolver::CWaveSolver(CGeometry *geometry,
 	bool restart = (config->GetRestart());
 	if (!restart) {
     
-    double *Coord, Radius;
 		for (unsigned long iPoint = 0; iPoint < nPoint; iPoint++) {
-      
-      /*--- Set up the initial condition for the drum problem ---*/
-      Coord = geometry->node[iPoint]->GetCoord();
-      Radius = 0.0;
-      for (unsigned short iDim = 0; iDim < nDim; iDim++)
-        Radius += Coord[iDim]*Coord[iDim];
-      Radius = sqrt(Radius);
-      
-      /*--- Symmetrically plucked drum ---*/
-      //      Solution[0] = 1.0 - Radius; 
-      //      Solution[1] = 0.0;
-      
-      /*--- Off-center strike ---*/
-//      if ((Radius > 0.4) && (Radius < 0.6)) {
-//        Solution[0] = 10.0; 
-//      } else
-//          Solution[0] = 0.0;
-//      Solution[1] = 0.0;
-      
-      /*--- Struck drum ---*/
-//      Solution[0] = 0.0; 
-//      Solution[1] = -1.0;
       
       /*--- Zero initial condition for testing source terms & forcing BCs ---*/
       Solution[0] = 0.0; 
@@ -129,7 +119,6 @@ CWaveSolver::CWaveSolver(CGeometry *geometry,
 	} else {
     
     cout << "Wave restart file not currently configured!!" << endl;
-    exit(1);
     
 		string mesh_filename = config->GetSolution_FlowFileName();
 		ifstream restart_file;
@@ -139,14 +128,15 @@ CWaveSolver::CWaveSolver(CGeometry *geometry,
 		restart_file.open(cstr, ios::in);
         
 		if (restart_file.fail()) {
-			cout << "There is no wave restart file!!" << endl;
-			exit(1);
+		  if (rank == MASTER_NODE)
+		    cout << "There is no wave restart file!!" << endl;
+			exit(EXIT_FAILURE);
 		}
 		unsigned long index;
 		string text_line;
     
-		for(unsigned long iPoint = 0; iPoint < nPoint; iPoint++) {
-			getline(restart_file,text_line);
+		for (unsigned long iPoint = 0; iPoint < nPoint; iPoint++) {
+			getline(restart_file, text_line);
 			istringstream point_line(text_line);
 			point_line >> index >> Solution[0] >> Solution[1];
 			node[iPoint] = new CWaveVariable(Solution, nDim, nVar, config);
@@ -159,10 +149,6 @@ CWaveSolver::CWaveSolver(CGeometry *geometry,
 CWaveSolver::~CWaveSolver(void) {
   
 	unsigned short iVar;
-  
-	delete [] Residual;
-	delete [] Residual_Max;
-	delete [] Solution;
   
 	for (iVar = 0; iVar < nDim+1; iVar++)
 		delete [] StiffMatrix_Elem[iVar];
@@ -202,12 +188,10 @@ void CWaveSolver::Source_Residual(CGeometry *geometry,
                                     CNumerics *numerics, CNumerics *second_numerics,
                                     CConfig   *config, 
                                     unsigned short iMesh) {
-
-  /* Local variables and initialization */
   
 	unsigned long iElem, Point_0 = 0, Point_1 = 0, Point_2 = 0;
-	double a[3], b[3], Area_Local, Time_Num, Time_Phys;
-	double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL;
+  su2double a[3] = {0.0,0.0,0.0}, b[3] = {0.0,0.0,0.0}, Area_Local, Time_Num;
+	su2double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL;
 	unsigned short iDim;
 	
   /*--- Numerical time step. This system is unconditionally stable,
@@ -215,9 +199,6 @@ void CWaveSolver::Source_Residual(CGeometry *geometry,
 	if (config->GetUnsteady_Simulation() == TIME_STEPPING) 
     Time_Num = config->GetDelta_UnstTimeND();
 	else Time_Num = 1E+30;
-  
-  /*--- Physical timestep for source terms ---*/
-  Time_Phys = config->GetDelta_UnstTimeND();
   
 	/* Loop through elements to compute contributions from the matrix     */
   /* blocks involving time. These contributions are also added to the   */
@@ -294,16 +275,14 @@ void CWaveSolver::Source_Template(CGeometry *geometry,
 
 }
 
-void CWaveSolver::Galerkin_Method(CGeometry *geometry, 
+void CWaveSolver::Viscous_Residual(CGeometry *geometry, 
                                     CSolver **solver_container, 
                                     CNumerics *numerics,
                                     CConfig   *config, 
-                                    unsigned short iMesh) {
-  
-  /* Local variables and initialization */
+                                    unsigned short iMesh, unsigned short iRKStep) {
   
 	unsigned long iElem, Point_0 = 0, Point_1 = 0, Point_2 = 0, iPoint, total_index;
-	double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL, wave_speed_2;
+	su2double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL, wave_speed_2;
 	unsigned short iVar;
 	
 	for (iElem = 0; iElem < geometry->GetnElem(); iElem++) {
@@ -389,31 +368,36 @@ void CWaveSolver::BC_Euler_Wall(CGeometry *geometry,
                                   CNumerics *numerics, 
                                   CConfig   *config, 
 																	unsigned short val_marker) {
-	
-  /* Local variables */
   
   unsigned long iPoint, iVertex, total_index, iter;
-	double deltaT, omega, time, ampl, wave_sol[2];
+  su2double deltaT, omega, time, ampl, *wave_sol;
+  unsigned short iVar;
   
-  /* Set the values needed for periodic forcing */
+  /*--- Set the values needed for periodic forcing ---*/
   
   deltaT = config->GetDelta_UnstTimeND();
   iter   = config->GetExtIter();  
-  time   = static_cast<double>(iter)*deltaT;
+  time   = static_cast<su2double>(iter)*deltaT;
   omega  = 1.0;
   ampl   = 1.0;
   
-    /* Compute sin wave forcing at the boundary */
+  wave_sol = new su2double [nVar];
+  
+  for (iVar = 0; iVar < nVar; iVar++) {
+    wave_sol[iVar] = 0.0;
+  }
+
+  /*--- Compute sin wave forcing at the boundary ---*/
   
   wave_sol[0] = ampl*sin(omega*time);
   wave_sol[1] = 0.0; //-ampl*cos(omega*time_new)*omega;
   
-  /* Set the solution at the boundary nodes and zero the residual */
+  /*--- Set the solution at the boundary nodes and zero the residual ---*/
 	
   for (iVertex = 0; iVertex < geometry->nVertex[val_marker]; iVertex++) {
 		iPoint = geometry->vertex[val_marker][iVertex]->GetNode();
     
-    for (unsigned short iVar = 0; iVar < nVar; iVar++) {
+    for (iVar = 0; iVar < nVar; iVar++) {
 			Solution[iVar] = wave_sol[iVar];
 			Residual[iVar] = 0.0;
 		}
@@ -427,13 +411,14 @@ void CWaveSolver::BC_Euler_Wall(CGeometry *geometry,
     }
 	}
   
+  delete [] wave_sol;
+  
 }
 
 void CWaveSolver::BC_Far_Field(CGeometry *geometry, CSolver **solver_container,
                                CNumerics *conv_numerics, CNumerics *visc_numerics, CConfig *config,
                                unsigned short val_marker) {
 	
-  
   /*--- Do nothing at the moment ---*/
   
 }
@@ -444,7 +429,7 @@ void CWaveSolver::Wave_Strength(CGeometry *geometry, CConfig *config) {
 	
   unsigned long iPoint, iVertex;
   unsigned short iMarker, Boundary, Monitoring;
-  double WaveSol, WaveStrength = 0.0, factor;
+  su2double WaveSol, WaveStrength = 0.0, factor;
   
   /* Multiplying rho' by c^2 gives the acoustic pressure, p' */
   factor = config->GetWaveSpeed()*config->GetWaveSpeed();
@@ -455,7 +440,7 @@ void CWaveSolver::Wave_Strength(CGeometry *geometry, CConfig *config) {
   
   /*--- Loop over the wave far-field markers ---*/
 	for (iMarker = 0; iMarker < config->GetnMarker_All(); iMarker++) {
-		Boundary   = config->GetMarker_All_Boundary(iMarker);
+		Boundary   = config->GetMarker_All_KindBC(iMarker);
 		Monitoring = config->GetMarker_All_Monitoring(iMarker);
     
     if (Boundary == FAR_FIELD) {
@@ -473,7 +458,7 @@ void CWaveSolver::Wave_Strength(CGeometry *geometry, CConfig *config) {
         WaveStrength += factor*WaveSol*WaveSol;
       }
       
-      if  (Monitoring == YES) {
+      if (Monitoring == YES) {
         CWave[iMarker] = WaveStrength;
         AllBound_CWave += CWave[iMarker];
       }
@@ -489,10 +474,10 @@ void CWaveSolver::SetResidual_DualTime(CGeometry *geometry, CSolver **solver_con
                                         unsigned short iMesh, unsigned short RunTime_EqSystem) {
 	
 	unsigned long iElem, Point_0 = 0, Point_1 = 0, Point_2 = 0;
-	double a[3], b[3], Area_Local, Time_Num;
-	double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL;
+	su2double a[3] = {0.0,0.0,0.0}, b[3] = {0.0,0.0,0.0}, Area_Local, Time_Num;
+	su2double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL;
 	unsigned short iDim, iVar, jVar;
-	double TimeJac = 0.0;
+	su2double TimeJac = 0.0;
 	
 	/*--- Numerical time step (this system is uncoditional stable... a very big number can be used) ---*/
 	Time_Num = config->GetDelta_UnstTimeND();
@@ -558,7 +543,7 @@ void CWaveSolver::SetResidual_DualTime(CGeometry *geometry, CSolver **solver_con
 	}
 	
 	unsigned long iPoint, total_index;
-	double *U_time_nM1, *U_time_n, *U_time_nP1;
+	su2double *U_time_nM1, *U_time_n, *U_time_nP1;
 	
 	/*--- loop over points ---*/
 	for (iPoint = 0; iPoint < geometry->GetnPointDomain(); iPoint++) { 
@@ -569,7 +554,7 @@ void CWaveSolver::SetResidual_DualTime(CGeometry *geometry, CSolver **solver_con
 		U_time_nP1 = node[iPoint]->GetSolution();
 		
 		/*--- Compute Residual ---*/
-		for(iVar = 0; iVar < nVar; iVar++) {
+		for (iVar = 0; iVar < nVar; iVar++) {
 			total_index = iPoint*nVar+iVar;
 			LinSysRes[total_index] = 0.0;
 			if (config->GetUnsteady_Simulation() == DT_STEPPING_1ST)
@@ -594,28 +579,32 @@ void CWaveSolver::SetResidual_DualTime(CGeometry *geometry, CSolver **solver_con
 
 void CWaveSolver::ImplicitEuler_Iteration(CGeometry *geometry, CSolver **solver_container, CConfig *config) {
 	
-    unsigned short iVar;
+  unsigned short iVar;
 	unsigned long iPoint, total_index;
     
 	/*--- Set maximum residual to zero ---*/
+  
 	for (iVar = 0; iVar < nVar; iVar++) {
 		SetRes_RMS(iVar, 0.0);
         SetRes_Max(iVar, 0.0, 0);
     }
 	
 	/*--- Build implicit system ---*/
+  
 	for (iPoint = 0; iPoint < geometry->GetnPointDomain(); iPoint++) {
         
 		/*--- Right hand side of the system (-Residual) and initial guess (x = 0) ---*/
+    
 		for (iVar = 0; iVar < nVar; iVar++) {
 			total_index = iPoint*nVar+iVar;
 			LinSysSol[total_index] = 0.0;
 			AddRes_RMS(iVar, LinSysRes[total_index]*LinSysRes[total_index]);
-            AddRes_Max(iVar, fabs(LinSysRes[total_index]), geometry->node[iPoint]->GetGlobalIndex());
+            AddRes_Max(iVar, fabs(LinSysRes[total_index]), geometry->node[iPoint]->GetGlobalIndex(), geometry->node[iPoint]->GetCoord());
 		}
 	}
     
     /*--- Initialize residual and solution at the ghost points ---*/
+  
     for (iPoint = geometry->GetnPointDomain(); iPoint < geometry->GetnPoint(); iPoint++) {
         for (iVar = 0; iVar < nVar; iVar++) {
             total_index = iPoint*nVar + iVar;
@@ -624,44 +613,25 @@ void CWaveSolver::ImplicitEuler_Iteration(CGeometry *geometry, CSolver **solver_
         }
     }
 	
-	/*--- Solve the linear system (Krylov subspace methods) ---*/
-  CMatrixVectorProduct* mat_vec = new CSysMatrixVectorProduct(Jacobian, geometry, config);
-  
-  CPreconditioner* precond = NULL;
-  if (config->GetKind_Linear_Solver_Prec() == JACOBI) {
-    Jacobian.BuildJacobiPreconditioner();
-    precond = new CJacobiPreconditioner(Jacobian, geometry, config);
-  }
-  else if (config->GetKind_Linear_Solver_Prec() == LU_SGS) {
-    precond = new CLU_SGSPreconditioner(Jacobian, geometry, config);
-  }
-  else if (config->GetKind_Linear_Solver_Prec() == LINELET) {
-    Jacobian.BuildJacobiPreconditioner();
-    precond = new CLineletPreconditioner(Jacobian, geometry, config);
-  }
+  /*--- Solve or smooth the linear system ---*/
   
   CSysSolve system;
-  if (config->GetKind_Linear_Solver() == BCGSTAB)
-    system.BCGSTAB(LinSysRes, LinSysSol, *mat_vec, *precond, config->GetLinear_Solver_Error(),
-                   config->GetLinear_Solver_Iter(), false);
-  else if (config->GetKind_Linear_Solver() == FGMRES)
-    system.FGMRES(LinSysRes, LinSysSol, *mat_vec, *precond, config->GetLinear_Solver_Error(),
-                 config->GetLinear_Solver_Iter(), false);
-  
-  delete mat_vec;
-  delete precond;
+  system.Solve(Jacobian, LinSysRes, LinSysSol, geometry, config);
 	
 	/*--- Update solution (system written in terms of increments) ---*/
+  
 	for (iPoint = 0; iPoint < geometry->GetnPointDomain(); iPoint++) {
 		for (iVar = 0; iVar < nVar; iVar++) {
-			node[iPoint]->AddSolution(iVar, config->GetLinear_Solver_Relax()*LinSysSol[iPoint*nVar+iVar]);
+			node[iPoint]->AddSolution(iVar, LinSysSol[iPoint*nVar+iVar]);
 		}
 	}
 	
   /*--- MPI solution ---*/
+  
   Set_MPI_Solution(geometry, config);
   
   /*--- Compute the root mean square residual ---*/
+  
   SetResidual_RMS(geometry, config);
   
 }
@@ -673,7 +643,7 @@ void CWaveSolver::SetSpace_Matrix(CGeometry *geometry,
 //  /* Local variables and initialization */
 //  
 //	unsigned long iElem, Point_0 = 0, Point_1 = 0, Point_2 = 0, iPoint, total_index;
-//	double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL, wave_speed_2;
+//	su2double *Coord_0 = NULL, *Coord_1= NULL, *Coord_2= NULL, wave_speed_2;
 //	unsigned short iVar;
 //	
 //	for (iElem = 0; iElem < geometry->GetnElem(); iElem++) {
@@ -738,12 +708,8 @@ void CWaveSolver::LoadRestart(CGeometry **geometry, CSolver ***solver, CConfig *
 
 	int rank;
   
-#ifndef NO_MPI
-#ifdef WINDOWS
-	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#else
-	rank = MPI::COMM_WORLD.Get_rank();
-#endif
+#ifdef HAVE_MPI
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #else
 	rank = MASTER_NODE;
 #endif
@@ -763,22 +729,22 @@ void CWaveSolver::LoadRestart(CGeometry **geometry, CSolver ***solver, CConfig *
     flowIter  = nFlowIter - adjIter - 1;
     unsigned short lastindex = restart_filename.find_last_of(".");
     restart_filename = restart_filename.substr(0, lastindex);
-    if ((int(flowIter) >= 0) && (int(flowIter) < 10)) sprintf (buffer, "_0000%d.dat", int(flowIter));
-    if ((int(flowIter) >= 10) && (int(flowIter) < 100)) sprintf (buffer, "_000%d.dat", int(flowIter));
-    if ((int(flowIter) >= 100) && (int(flowIter) < 1000)) sprintf (buffer, "_00%d.dat", int(flowIter));
-    if ((int(flowIter) >= 1000) && (int(flowIter) < 10000)) sprintf (buffer, "_0%d.dat", int(flowIter));
-    if (int(flowIter) >= 10000) sprintf (buffer, "_%d.dat", int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 0) && (SU2_TYPE::Int(flowIter) < 10)) SPRINTF (buffer, "_0000%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 10) && (SU2_TYPE::Int(flowIter) < 100)) SPRINTF (buffer, "_000%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 100) && (SU2_TYPE::Int(flowIter) < 1000)) SPRINTF (buffer, "_00%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 1000) && (SU2_TYPE::Int(flowIter) < 10000)) SPRINTF (buffer, "_0%d.dat", SU2_TYPE::Int(flowIter));
+    if (SU2_TYPE::Int(flowIter) >= 10000) SPRINTF (buffer, "_%d.dat", SU2_TYPE::Int(flowIter));
     UnstExt = string(buffer);
     restart_filename.append(UnstExt);
   } else {
     flowIter  =config->GetExtIter();
     unsigned short lastindex = restart_filename.find_last_of(".");
     restart_filename = restart_filename.substr(0, lastindex);
-    if ((int(flowIter) >= 0) && (int(flowIter) < 10)) sprintf (buffer, "_0000%d.dat", int(flowIter));
-    if ((int(flowIter) >= 10) && (int(flowIter) < 100)) sprintf (buffer, "_000%d.dat", int(flowIter));
-    if ((int(flowIter) >= 100) && (int(flowIter) < 1000)) sprintf (buffer, "_00%d.dat", int(flowIter));
-    if ((int(flowIter) >= 1000) && (int(flowIter) < 10000)) sprintf (buffer, "_0%d.dat", int(flowIter));
-    if (int(flowIter) >= 10000) sprintf (buffer, "_%d.dat", int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 0) && (SU2_TYPE::Int(flowIter) < 10)) SPRINTF (buffer, "_0000%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 10) && (SU2_TYPE::Int(flowIter) < 100)) SPRINTF (buffer, "_000%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 100) && (SU2_TYPE::Int(flowIter) < 1000)) SPRINTF (buffer, "_00%d.dat", SU2_TYPE::Int(flowIter));
+    if ((SU2_TYPE::Int(flowIter) >= 1000) && (SU2_TYPE::Int(flowIter) < 10000)) SPRINTF (buffer, "_0%d.dat", SU2_TYPE::Int(flowIter));
+    if (SU2_TYPE::Int(flowIter) >= 10000) SPRINTF (buffer, "_%d.dat", SU2_TYPE::Int(flowIter));
     UnstExt = string(buffer);
     restart_filename.append(UnstExt);
   }
@@ -790,13 +756,14 @@ void CWaveSolver::LoadRestart(CGeometry **geometry, CSolver ***solver, CConfig *
   
   /*--- In case there is no file ---*/
   if (restart_file.fail()) {
-    cout << "There is no wave restart file!!" << endl;
-    exit(1);
+    if (rank == MASTER_NODE)
+      cout << "There is no wave restart file!!" << endl;
+    exit(EXIT_FAILURE);
   }
   
   /*--- Read the restart file ---*/
-  for(iPoint = 0; iPoint < geometry[MESH_0]->GetnPoint(); iPoint++) {
-    getline(restart_file,text_line);
+  for (iPoint = 0; iPoint < geometry[MESH_0]->GetnPoint(); iPoint++) {
+    getline(restart_file, text_line);
     istringstream point_line(text_line);
     point_line >> index >> Solution[0] >> Solution[1];
     node[iPoint]->SetSolution_Direct(Solution);

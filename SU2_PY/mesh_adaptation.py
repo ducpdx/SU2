@@ -2,10 +2,19 @@
 
 ## \file mesh_adaptation.py
 #  \brief Python script for doing the grid adaptation using the SU2 suite.
-#  \author Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 3.1.0 "eagle"
+#  \author F. Palacios
+#  \version 4.1.3 "Cardinal"
 #
-# SU2, Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
+# SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+#                      Dr. Thomas D. Economon (economon@stanford.edu).
+#
+# SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+#                 Prof. Piero Colonna's group at Delft University of Technology.
+#                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+#                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+#                 Prof. Rafael Palacios' group at Imperial College London.
+#
+# Copyright (C) 2012-2016 SU2, the open-source CFD code.
 #
 # SU2 is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -34,7 +43,7 @@ def main():
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filename",
                       help="read config from FILE", metavar="FILE")
-    parser.add_option("-p", "--partitions", dest="partitions", default=0,
+    parser.add_option("-n", "--partitions", dest="partitions", default=0,
                       help="number of PARTITIONS", metavar="PARTITIONS")
     parser.add_option("-c", "--cycle", dest="cycle", default=1,
                       help="number of CYCLE adaptations", metavar="CYCLE")
@@ -49,7 +58,7 @@ def main():
     options.cycle      = int( options.cycle      )
     options.overwrite  = options.overwrite == "True"    
     options.save_all   = options.save_all  == "True"
-
+    
     # Run Mesh Adaptation
     mesh_adaptation ( options.filename   ,
                       options.partitions ,
@@ -79,17 +88,14 @@ def mesh_adaptation( filename             ,
     # Set the number of partitions for parallel computations
     config.NUMBER_PART = partitions
     
-    # Run SU2_DDC for parallel computations
-    SU2.run.decompose(config)
-
     # Call CFD to generate a solution
     SU2.run.CFD(config)
 
     # Rename the output restart to the input solution file
     SU2.io.restart2solution(config)
 
-    # Call MAC
-    SU2.run.MAC(config)
+    # Call MSH
+    SU2.run.MSH(config)
 
 
 

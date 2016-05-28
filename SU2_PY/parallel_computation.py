@@ -2,10 +2,19 @@
 
 ## \file parallel_computation.py
 #  \brief Python script for doing the continuous adjoint computation using the SU2 suite.
-#  \author Francisco Palacios, Tom Economon, Trent Lukaczyk, Aerospace Design Laboratory (Stanford University) <http://su2.stanford.edu>.
-#  \version 3.1.0 "eagle"
+#  \author T. Economon, T. Lukaczyk, F. Palacios
+#  \version 4.1.3 "Cardinal"
 #
-# SU2, Copyright (C) 2012-2013 Aerospace Design Laboratory (ADL).
+# SU2 Lead Developers: Dr. Francisco Palacios (Francisco.D.Palacios@boeing.com).
+#                      Dr. Thomas D. Economon (economon@stanford.edu).
+#
+# SU2 Developers: Prof. Juan J. Alonso's group at Stanford University.
+#                 Prof. Piero Colonna's group at Delft University of Technology.
+#                 Prof. Nicolas R. Gauger's group at Kaiserslautern University of Technology.
+#                 Prof. Alberto Guardone's group at Polytechnic University of Milan.
+#                 Prof. Rafael Palacios' group at Imperial College London.
+#
+# Copyright (C) 2012-2016 SU2, the open-source CFD code.
 #
 # SU2 is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -35,25 +44,21 @@ def main():
     parser=OptionParser()
     parser.add_option("-f", "--file",       dest="filename",
                       help="read config from FILE", metavar="FILE")
-    parser.add_option("-p", "--partitions", dest="partitions", default=2,
+    parser.add_option("-n", "--partitions", dest="partitions", default=2,
                       help="number of PARTITIONS", metavar="PARTITIONS")
     parser.add_option("-c", "--compute",    dest="compute",    default="True",
                       help="COMPUTE direct and adjoint problem", metavar="COMPUTE")
-    parser.add_option("-d", "--divide_grid",dest="divide_grid",default="True",
-                      help="DIVIDE_GRID the numerical grid", metavar="DIVIDE_GRID")
-    
+                      
     (options, args)=parser.parse_args()
     options.partitions  = int( options.partitions )
     options.compute     = options.compute.upper() == 'TRUE'
-    options.divide_grid = options.divide_grid.upper() == 'TRUE'
 
     if options.filename == None:
         raise Exception("No config file provided. Use -f flag")
     
     parallel_computation( options.filename    ,
                           options.partitions  ,
-                          options.compute     ,
-                          options.divide_grid  )
+                          options.compute      )
         
 #: def main()
 
@@ -64,19 +69,14 @@ def main():
 
 def parallel_computation( filename           , 
                           partitions  = 0    , 
-                          compute     = True ,
-                          divide_grid = True  ):
+                          compute     = True  ):
     
     # Config
     config = SU2.io.Config(filename)
     config.NUMBER_PART = partitions
-    config.DECOMPOSED  = not divide_grid
     
     # State
     state = SU2.io.State()
-    
-    # Decomposition
-    info = SU2.run.decompose(config)
     
     # check for existing files
     if not compute:
@@ -87,12 +87,11 @@ def parallel_computation( filename           ,
     # CFD Solution (direct or adjoint)
     info = SU2.run.CFD(config) 
     state.update(info)
-    #SU2.io.restart2solution(config,state)
 
     # Solution merging
     if config.MATH_PROBLEM == 'DIRECT':
         config.SOLUTION_FLOW_FILENAME = config.RESTART_FLOW_FILENAME
-    elif config.MATH_PROBLEM == 'ADJOINT':
+    elif config.MATH_PROBLEM in ['CONTINUOUS_ADJOINT', 'DISCRETE_ADJOINT']:
         config.SOLUTION_ADJ_FILENAME = config.RESTART_ADJ_FILENAME
     info = SU2.run.merge(config)
     state.update(info)
